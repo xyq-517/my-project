@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">胸腹部器官病灶检测平台</h1>
+    <p class="page-desc">基于人工智能的胸腹器官病灶检测平台</p>
+</div>
+
+<!-- 网页功能展示 -->
+<div class="card">
+    <div class="card-header">
+        <div>
+            <div class="card-title">网页功能展示</div>
+            <div class="card-subtitle">多维度功能模块，全面辅助医疗诊断</div>
+        </div>
+    </div>
+    <div class="ability-grid">
+        <div class="ability-card">
+            <div class="ability-icon detect">
+                <i class="fas fa-search-plus"></i>
+            </div>
+            <div class="ability-title">病灶检测</div>
+            <div class="ability-desc">精准定位病灶位置，快速识别异常区域</div>
+        </div>
+        <div class="ability-card">
+            <div class="ability-icon risk">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="ability-title">风险评估</div>
+            <div class="ability-desc">评估病灶风险等级，提供诊断参考</div>
+        </div>
+        <div class="ability-card">
+            <div class="ability-icon report">
+                <i class="fas fa-file-medical-alt"></i>
+            </div>
+            <div class="ability-title">智能报告</div>
+            <div class="ability-desc">自动生成分析报告，展示检测数据</div>
+        </div>
+    </div>
+</div>
+
+<!-- 支持检测器官 -->
+<div class="card">
+    <div class="card-header">
+        <div>
+            <div class="card-title">支持检测器官</div>
+            <div class="card-subtitle">覆盖胸腹部主要器官，精准识别病灶</div>
+        </div>
+    </div>
+    <div class="organ-grid">
+        <div class="organ-card">
+            <div class="organ-name">肺部</div>
+        </div>
+        <div class="organ-card">
+            <div class="organ-name">肝脏</div>
+        </div>
+        <div class="organ-card">
+            <div class="organ-name">肾脏</div>
+        </div>
+        <div class="organ-card">
+            <div class="organ-name">肠胃</div>
+        </div>
+        <div class="organ-card">
+            <div class="organ-name">胰腺</div>
+        </div>
+        <div class="organ-card">
+            <div class="organ-name">脾脏</div>
+        </div>
+    </div>
+</div>
+
+<!-- 科普中心 - 仅在大众模式或未登录时显示 -->
+{% if not user or user.get('mode') != 'doctor' %}
+<div class="card">
+    <div class="card-header">
+        <div>
+            <div class="card-title">科普中心</div>
+            <div class="card-subtitle">医学知识科普，健康常识普及</div>
+        </div>
+        <a href="{{ url_for('science') }}" class="card-more">查看更多 →</a>
+    </div>
+    <div class="article-list">
+        {% for article in articles %}
+        <a href="{{ article.url }}" target="_blank" class="article-item article-link">
+            <div class="article-title">{{ article.title }}</div>
+            <div class="article-summary">{{ article.summary }}</div>
+            <div class="article-tags">
+                {% for tag in article.tags %}
+                <span class="tag">{{ tag }}</span>
+                {% endfor %}
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,897 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">交流论坛</h1>
+    <p class="page-desc">分享经验，交流心得，共同关注健康</p>
+</div>
+
+<!-- 帖子列表（平铺铺满） -->
+<div class="card">
+    <div class="card-header">
+        <div>
+            <div class="card-title">最新帖子</div>
+            <div class="card-subtitle">社区最新讨论内容</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openPostModal()">
+            <i class="fas fa-plus"></i> 发布帖子
+        </button>
+    </div>
+    <div class="forum-list" id="forum-list">
+        <!-- 帖子列表将由 JS 动态渲染 -->
+    </div>
+</div>
+
+<!-- ==================== 发布帖子弹窗 ==================== -->
+<div id="postModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 600px; width: 92%;">
+        <div class="modal-header">
+            <h3>发布新帖子</h3>
+            <span class="modal-close" onclick="closePostModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label class="form-label">帖子标题</label>
+                <input type="text" id="postTitle" class="form-input" placeholder="请输入帖子标题...">
+            </div>
+            <div class="form-group">
+                <label class="form-label">帖子内容</label>
+                <textarea id="postContent" class="form-textarea" rows="6" placeholder="分享您的经验或提出问题..."></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">标签（用空格分隔）</label>
+                <input type="text" id="postTags" class="form-input" placeholder="例如：肺结节 健康科普">
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+                <button class="btn btn-outline" onclick="closePostModal()">取消</button>
+                <button class="btn btn-primary" onclick="submitPost()">发布</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ==================== 帖子详情弹窗 ==================== -->
+<div id="postDetailModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 700px; width: 92%;">
+        <div class="modal-header">
+            <h3>帖子详情</h3>
+            <span class="modal-close" onclick="closePostDetailModal()">&times;</span>
+        </div>
+        <div class="modal-body" id="postDetailBody">
+            <!-- 帖子详情动态渲染 -->
+        </div>
+    </div>
+</div>
+
+<script>
+// ========== 用户数据隔离 ==========
+const CURRENT_USER = {% if user %}'{{ user.username }}'{% else %}null{% endif %};
+
+function userKey(key) {
+    return CURRENT_USER ? ('user_' + CURRENT_USER + '_' + key) : key;
+}
+
+// ========== 数据存储 ==========
+const STORAGE_KEYS = {
+    posts: 'forum_posts',
+    comments: 'forum_comments',
+    favorites: userKey('user_favorites')
+};
+
+function getPosts() {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEYS.posts);
+        if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return getDefaultPosts();
+}
+
+function savePosts(posts) {
+    localStorage.setItem(STORAGE_KEYS.posts, JSON.stringify(posts));
+}
+
+function getComments() {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEYS.comments);
+        if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return getDefaultComments();
+}
+
+function saveComments(comments) {
+    localStorage.setItem(STORAGE_KEYS.comments, JSON.stringify(comments));
+}
+
+function getFavorites() {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEYS.favorites);
+        if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return { posts: [], articles: [] };
+}
+
+function saveFavorites(favorites) {
+    localStorage.setItem(STORAGE_KEYS.favorites, JSON.stringify(favorites));
+}
+
+// ========== 20篇预设帖子 ==========
+function getDefaultPosts() {
+    return [
+        {
+            id: 'post_1',
+            author: '李医生',
+            avatar: '李',
+            time: '2小时前',
+            title: '肺结节患者的日常注意事项',
+            content: '肺结节患者在日常生活中需要注意以下几点：1. 戒烟限酒；2. 避免接触有害气体；3. 定期复查；4. 保持良好心态；5. 适量运动增强体质。建议每3-6个月复查一次CT，观察结节变化情况。',
+            tags: ['肺结节', '健康科普'],
+            likes: 128,
+            commentCount: 3
+        },
+        {
+            id: 'post_2',
+            author: '王患者',
+            avatar: '王',
+            time: '5小时前',
+            title: 'CT检查前需要做哪些准备？',
+            content: '最近要做CT检查，想了解一下需要提前做哪些准备工作？有没有需要注意的事项？比如是否需要空腹、是否可以带金属物品等，希望有经验的朋友分享一下。',
+            tags: ['CT检查', '经验分享'],
+            likes: 96,
+            commentCount: 3
+        },
+        {
+            id: 'post_3',
+            author: '张医生',
+            avatar: '张',
+            time: '1天前',
+            title: '肝囊肿患者的饮食建议',
+            content: '肝囊肿患者在饮食上需要注意：1. 避免饮酒；2. 少吃油腻食物；3. 多吃蔬菜水果；4. 保持规律作息；5. 控制蛋白质摄入量。大多数肝囊肿为良性，定期随访即可。',
+            tags: ['肝囊肿', '饮食健康'],
+            likes: 85,
+            commentCount: 3
+        },
+        {
+            id: 'post_4',
+            author: '刘护士',
+            avatar: '刘',
+            time: '1天前',
+            title: '肾囊肿和肝囊肿有什么区别？',
+            content: '很多患者会混淆肾囊肿和肝囊肿，其实两者在发病部位、症状表现和处理方式上都有明显区别。肾囊肿可能影响肾功能，而肝囊肿多数无症状。今天给大家详细科普一下。',
+            tags: ['肾囊肿', '肝囊肿', '健康科普'],
+            likes: 112,
+            commentCount: 3
+        },
+        {
+            id: 'post_5',
+            author: '陈患者',
+            avatar: '陈',
+            time: '2天前',
+            title: '体检发现肺结节，很焦虑怎么办？',
+            content: '上周体检发现肺部有一个5mm的结节，医生说是良性的可能性大，但我还是很焦虑，晚上都睡不好。有没有同样经历的朋友可以分享一下你们是怎么调整心态的？',
+            tags: ['肺结节', '心理健康', '经验分享'],
+            likes: 156,
+            commentCount: 3
+        },
+        {
+            id: 'post_6',
+            author: '赵医生',
+            avatar: '赵',
+            time: '2天前',
+            title: '脾囊肿需要手术治疗吗？',
+            content: '脾囊肿是一种相对少见的脾脏疾病。大多数脾囊肿为先天性或创伤后形成。对于直径小于5cm且无症状的脾囊肿，通常建议定期观察；若囊肿较大或有症状，则需考虑手术治疗。',
+            tags: ['脾囊肿', '手术治疗', '健康科普'],
+            likes: 78,
+            commentCount: 3
+        },
+        {
+            id: 'post_7',
+            author: '营养师小林',
+            avatar: '林',
+            time: '3天前',
+            title: '脂肪肝患者如何通过饮食调理改善病情',
+            content: '脂肪肝已成为现代人的常见病。通过合理的饮食调理，大多数轻度脂肪肝是可以逆转的。建议：1. 控制总热量摄入；2. 减少饱和脂肪酸；3. 增加膳食纤维；4. 适量补充优质蛋白。',
+            tags: ['脂肪肝', '饮食健康', '营养调理'],
+            likes: 203,
+            commentCount: 3
+        },
+        {
+            id: 'post_8',
+            author: '周患者',
+            avatar: '周',
+            time: '3天前',
+            title: '胆囊息肉需要手术吗？',
+            content: '体检发现胆囊有一个8mm的息肉，医生说暂时不用手术，让定期复查。但我总担心会恶变，想问问大家，胆囊息肉多大需要手术？平时需要注意什么？',
+            tags: ['胆囊息肉', '经验分享', '手术治疗'],
+            likes: 134,
+            commentCount: 3
+        },
+        {
+            id: 'post_9',
+            author: '康复科医生',
+            avatar: '康',
+            time: '4天前',
+            title: '术后恢复期的营养补充指南',
+            content: '手术后的营养补充对康复至关重要。术后早期应以流质、半流质为主，逐渐过渡到正常饮食。重点补充蛋白质、维生素和矿物质，促进伤口愈合和身体恢复。',
+            tags: ['术后恢复', '营养补充', '康复指导'],
+            likes: 167,
+            commentCount: 3
+        },
+        {
+            id: 'post_10',
+            author: '抗癌战士',
+            avatar: '战',
+            time: '4天前',
+            title: '我的抗癌日记：从确诊到康复的心路历程',
+            content: '两年前确诊胃癌早期，经历了手术和化疗，现在复查一切正常。想和大家分享这段经历，希望能给正在抗癌的朋友们一些鼓励和信心。记住，心态是最好的良药！',
+            tags: ['抗癌', '胃癌', '心路历程', '经验分享'],
+            likes: 289,
+            commentCount: 3
+        },
+        {
+            id: 'post_11',
+            author: '夜班护士',
+            avatar: '夜',
+            time: '5天前',
+            title: '长期熬夜对肝脏的伤害有多大？',
+            content: '作为夜班护士，我深知熬夜对身体的伤害。肝脏在夜间11点到凌晨3点是最佳修复时间，长期熬夜会导致肝脏代谢功能紊乱，增加脂肪肝、肝损伤的风险。',
+            tags: ['熬夜', '肝脏健康', '健康科普'],
+            likes: 245,
+            commentCount: 3
+        },
+        {
+            id: 'post_12',
+            author: '消化科医生',
+            avatar: '消',
+            time: '5天前',
+            title: '胰腺炎患者的饮食禁忌',
+            content: '急性胰腺炎发作期需要禁食，恢复期饮食要格外注意：1. 绝对禁酒；2. 低脂饮食；3. 少量多餐；4. 避免暴饮暴食；5. 忌食辛辣刺激食物。慢性胰腺炎患者还需补充胰酶。',
+            tags: ['胰腺炎', '饮食禁忌', '消化科'],
+            likes: 198,
+            commentCount: 3
+        },
+        {
+            id: 'post_13',
+            author: '体检达人',
+            avatar: '体',
+            time: '6天前',
+            title: '体检发现甲状腺结节，该怎么办？',
+            content: '甲状腺结节检出率越来越高，但大多数是良性的。发现结节后不要惊慌，建议做甲状腺超声分级检查，根据TI-RADS分级决定后续处理方案。定期随访很重要。',
+            tags: ['甲状腺结节', '体检', '健康科普'],
+            likes: 176,
+            commentCount: 3
+        },
+        {
+            id: 'post_14',
+            author: '胃肠科医生',
+            avatar: '胃',
+            time: '6天前',
+            title: '胃癌早期筛查的重要性',
+            content: '胃癌早期症状不明显，一旦出现明显症状往往已是中晚期。建议40岁以上人群定期进行胃镜检查，尤其是有胃癌家族史、幽门螺杆菌感染者、慢性萎缩性胃炎患者等高危人群。',
+            tags: ['胃癌', '早期筛查', '胃肠科'],
+            likes: 221,
+            commentCount: 3
+        },
+        {
+            id: 'post_15',
+            author: '泌尿外科医生',
+            avatar: '泌',
+            time: '1周前',
+            title: '肾结石患者的日常护理',
+            content: '肾结石患者日常护理要点：1. 多饮水，每日尿量保持在2000ml以上；2. 根据结石成分调整饮食；3. 适量运动促进排石；4. 定期复查超声；5. 避免高草酸、高嘌呤食物。',
+            tags: ['肾结石', '日常护理', '泌尿外科'],
+            likes: 189,
+            commentCount: 3
+        },
+        {
+            id: 'post_16',
+            author: '肠镜医生',
+            avatar: '肠',
+            time: '1周前',
+            title: '肠息肉切除后的随访建议',
+            content: '肠息肉切除后并非一劳永逸，定期随访非常重要。一般建议：小型息肉切除后1-3年复查；多发息肉或较大息肉切除后6-12个月复查；高级别瘤变者需更密切随访。',
+            tags: ['肠息肉', '随访', '肠镜'],
+            likes: 156,
+            commentCount: 3
+        },
+        {
+            id: 'post_17',
+            author: '内分泌科医生',
+            avatar: '内',
+            time: '1周前',
+            title: '糖尿病患者如何保护肾脏',
+            content: '糖尿病肾病是糖尿病最常见的并发症之一。保护肾脏的关键：1. 严格控制血糖；2. 控制血压在130/80以下；3. 定期检查尿微量白蛋白；4. 避免使用肾毒性药物。',
+            tags: ['糖尿病', '肾脏保护', '内分泌科'],
+            likes: 198,
+            commentCount: 3
+        },
+        {
+            id: 'post_18',
+            author: '肝病专家',
+            avatar: '肝',
+            time: '1周前',
+            title: '肝癌高危人群的筛查策略',
+            content: '肝癌高危人群包括：乙肝/丙肝感染者、肝硬化患者、长期酗酒者、有肝癌家族史者等。建议每6个月进行一次肝脏超声+AFP检查，早发现早治疗可显著提高生存率。',
+            tags: ['肝癌', '筛查', '肝病'],
+            likes: 234,
+            commentCount: 3
+        },
+        {
+            id: 'post_19',
+            author: '脾切除患者',
+            avatar: '脾',
+            time: '1周前',
+            title: '脾切除术后对生活的影响及注意事项',
+            content: '因外伤导致脾破裂，做了脾切除手术。术后最大的变化是免疫力下降，容易感冒。医生建议：1. 接种肺炎疫苗；2. 注意个人卫生；3. 避免去人群密集场所；4. 出现发热及时就医。',
+            tags: ['脾切除', '术后恢复', '经验分享'],
+            likes: 145,
+            commentCount: 3
+        },
+        {
+            id: 'post_20',
+            author: '健康管理师',
+            avatar: '健',
+            time: '1周前',
+            title: '如何通过日常习惯预防常见器官疾病',
+            content: '预防胜于治疗！养成以下好习惯可有效预防器官疾病：1. 规律作息，保证睡眠；2. 均衡饮食，少油少盐；3. 坚持运动，控制体重；4. 定期体检，早发现早治疗；5. 戒烟限酒，远离毒害。',
+            tags: ['健康管理', '预防', '生活习惯'],
+            likes: 312,
+            commentCount: 3
+        }
+    ];
+}
+
+// ========== 预设评论数据 ==========
+function getDefaultComments() {
+    return {
+        'post_1': [
+            { author: '患者A', avatar: '患', time: '1小时前', content: '谢谢李医生的分享，请问肺结节患者可以喝咖啡吗？' },
+            { author: '李医生', avatar: '李', time: '50分钟前', content: '可以适量饮用，但不要过量，每天不超过2杯为宜。' },
+            { author: '康复患者', avatar: '康', time: '30分钟前', content: '我随访两年了，结节没有变化，心态真的很重要！' }
+        ],
+        'post_2': [
+            { author: '老病号', avatar: '老', time: '4小时前', content: '腹部CT需要空腹，增强CT需要提前做肾功能检查。' },
+            { author: '王患者', avatar: '王', time: '3小时前', content: '谢谢提醒！请问做增强CT需要家属陪同吗？' },
+            { author: '影像科医生', avatar: '影', time: '2小时前', content: '增强CT建议家属陪同，因为需要注射造影剂，极少数人可能出现过敏反应。' }
+        ],
+        'post_3': [
+            { author: '肝囊肿患者', avatar: '肝', time: '20小时前', content: '我的肝囊肿已经5年了，每年复查都没变化，饮食确实要注意。' },
+            { author: '营养师', avatar: '营', time: '18小时前', content: '建议多吃十字花科蔬菜，如西兰花、卷心菜，有助于肝脏解毒。' },
+            { author: '张医生', avatar: '张', time: '15小时前', content: '是的，保持健康饮食和规律作息是关键，大多数肝囊肿不需要特殊治疗。' }
+        ],
+        'post_4': [
+            { author: '医学爱好者', avatar: '医', time: '22小时前', content: '原来两者区别这么大，一直以为囊肿都是一样的。' },
+            { author: '肾囊肿患者', avatar: '肾', time: '20小时前', content: '我的肾囊肿已经3cm了，医生让半年复查一次。' },
+            { author: '刘护士', avatar: '刘', time: '18小时前', content: '是的，肾囊肿需要更密切监测，因为可能影响肾功能。' }
+        ],
+        'post_5': [
+            { author: '过来人', avatar: '过', time: '1天前', content: '我完全理解你的感受，我去年也发现肺结节，现在一年过去了，复查两次都没变化。' },
+            { author: '心理医生', avatar: '心', time: '1天前', content: '建议转移注意力，不要过度关注，遵医嘱定期复查即可，大部分肺结节都是良性的。' },
+            { author: '陈患者', avatar: '陈', time: '20小时前', content: '谢谢大家的安慰，我会调整心态，按时复查的！' }
+        ],
+        'post_6': [
+            { author: '脾囊肿患者', avatar: '脾', time: '1天前', content: '我的脾囊肿4cm，医生建议观察，暂时不用手术。' },
+            { author: '外科医生', avatar: '外', time: '1天前', content: '脾囊肿手术指征：直径>5cm、有症状、快速增大或怀疑恶性。' },
+            { author: '赵医生', avatar: '赵', time: '20小时前', content: '是的，脾囊肿手术相对少见，多数情况下保守观察即可。' }
+        ],
+        'post_7': [
+            { author: '脂肪肝患者', avatar: '脂', time: '2天前', content: '按照营养师的建议调整了饮食三个月，脂肪肝从重度变成轻度了！' },
+            { author: '运动达人', avatar: '运', time: '2天前', content: '配合运动效果更好，我每周跑步3次，脂肪肝完全消失了。' },
+            { author: '营养师小林', avatar: '林', time: '1天前', content: '太棒了！坚持就是胜利，轻度脂肪肝完全逆转是有可能的。' }
+        ],
+        'post_8': [
+            { author: '胆囊息肉患者', avatar: '胆', time: '2天前', content: '我的息肉10mm做了手术，病理是胆固醇息肉，良性的。' },
+            { author: '消化科医生', avatar: '消', time: '2天前', content: '一般>10mm、单发、宽基底、快速增长的息肉建议手术。' },
+            { author: '周患者', avatar: '周', time: '1天前', content: '谢谢医生解答，我会按时复查的。' }
+        ],
+        'post_9': [
+            { author: '术后患者', avatar: '术', time: '3天前', content: '刚做完手术一周，现在只能吃流食，什么时候可以正常吃饭？' },
+            { author: '康复科医生', avatar: '康', time: '3天前', content: '一般术后1-2周过渡到半流质，2-4周根据恢复情况逐渐正常饮食，具体要遵医嘱。' },
+            { author: '家属', avatar: '家', time: '2天前', content: '请问可以给术后病人喝鸡汤吗？' }
+        ],
+        'post_10': [
+            { author: '正在化疗', avatar: '化', time: '3天前', content: '看到你的分享很受鼓舞，我现在正在化疗第二期，有时候真的很难受。' },
+            { author: '抗癌战士', avatar: '战', time: '3天前', content: '加油！化疗确实辛苦，但坚持过去就会看到希望，保持好心态！' },
+            { author: '康复者', avatar: '康', time: '2天前', content: '我也是胃癌早期，手术五年了，现在生活完全正常，大家要有信心！' }
+        ],
+        'post_11': [
+            { author: '程序员', avatar: '程', time: '4天前', content: '经常熬夜加班，肝功能指标确实有点异常，看来要调整了。' },
+            { author: '夜班护士', avatar: '夜', time: '4天前', content: '建议夜班后保证充足睡眠，补充维生素B族，定期查肝功能。' },
+            { author: '肝病患者', avatar: '肝', time: '3天前', content: '熬夜确实伤肝，我以前就是长期熬夜导致脂肪肝加重的。' }
+        ],
+        'post_12': [
+            { author: '胰腺炎患者', avatar: '胰', time: '4天前', content: '急性胰腺炎发作真的太痛苦了，现在完全不敢吃油腻的。' },
+            { author: '消化科医生', avatar: '消', time: '4天前', content: '胰腺炎复发率较高，饮食控制是预防复发的关键，一定要坚持。' },
+            { author: '康复者', avatar: '康', time: '3天前', content: '我慢性胰腺炎五年了，一直在补充胰酶，控制得还不错。' }
+        ],
+        'post_13': [
+            { author: '甲状腺结节患者', avatar: '甲', time: '5天前', content: '我的结节评级4a级，穿刺结果是良性的，虚惊一场。' },
+            { author: '体检达人', avatar: '体', time: '5天前', content: '4a级确实需要重视，但大部分穿刺结果都是良性的，不用太担心。' },
+            { author: '内分泌医生', avatar: '内', time: '4天前', content: '建议同时检查甲状腺功能，结节合并甲减或甲亢需要同步治疗。' }
+        ],
+        'post_14': [
+            { author: '胃镜受检者', avatar: '胃', time: '5天前', content: '去年做了胃镜发现萎缩性胃炎，医生建议每年复查。' },
+            { author: '胃肠科医生', avatar: '胃', time: '5天前', content: '萎缩性胃炎确实需要定期随访，同时根除幽门螺杆菌很重要。' },
+            { author: '健康意识者', avatar: '健', time: '4天前', content: '40岁以上确实应该做胃镜筛查，早期发现早期治疗效果好很多。' }
+        ],
+        'post_15': [
+            { author: '肾结石患者', avatar: '肾', time: '6天前', content: '我的结石6mm，通过多喝水和运动排出来了，没做手术。' },
+            { author: '泌尿外科医生', avatar: '泌', time: '6天前', content: '小于6mm的结石有80%可以自行排出，多喝水是关键。' },
+            { author: '复发患者', avatar: '复', time: '5天前', content: '肾结石容易复发，我已经长过三次了，现在每天保证喝2升水。' }
+        ],
+        'post_16': [
+            { author: '肠息肉患者', avatar: '肠', time: '6天前', content: '去年切了3个息肉，今年复查又长了2个小的，息肉真的容易复发。' },
+            { author: '肠镜医生', avatar: '肠', time: '6天前', content: '多发息肉确实复发率较高，建议按医嘱定期复查肠镜。' },
+            { author: '家属', avatar: '家', time: '5天前', content: '请问肠息肉和遗传有关系吗？我父亲有肠息肉。' }
+        ],
+        'post_17': [
+            { author: '糖尿病患者', avatar: '糖', time: '6天前', content: '糖尿病10年了，最近检查发现微量白蛋白偏高，很担心。' },
+            { author: '内分泌科医生', avatar: '内', time: '6天前', content: '微量白蛋白偏高提示早期肾损伤，及时干预可以逆转，建议严格控制血糖血压。' },
+            { author: '老糖友', avatar: '糖', time: '5天前', content: '我控制好血糖和血压20年了，肾功能一直正常，关键是坚持。' }
+        ],
+        'post_18': [
+            { author: '乙肝携带者', avatar: '乙', time: '1周前', content: '我是乙肝携带者，每半年做一次超声和AFP检查，目前一切正常。' },
+            { author: '肝病专家', avatar: '肝', time: '1周前', content: '做得很好！乙肝携带者定期筛查非常重要，可以早期发现病变。' },
+            { author: '肝硬化患者', avatar: '肝', time: '6天前', content: '我已经肝硬化5年了，每3个月检查一次，目前稳定。' }
+        ],
+        'post_19': [
+            { author: '脾切除家属', avatar: '家', time: '1周前', content: '我孩子因为外伤切除了脾脏，现在特别注意预防感染。' },
+            { author: '脾切除患者', avatar: '脾', time: '1周前', content: '是的，脾切除后免疫力会下降，疫苗接种非常重要，建议咨询医生。' },
+            { author: '免疫科医生', avatar: '免', time: '6天前', content: '脾切除患者建议接种肺炎球菌疫苗、脑膜炎球菌疫苗和流感疫苗。' }
+        ],
+        'post_20': [
+            { author: '上班族', avatar: '上', time: '1周前', content: '工作太忙，很难做到规律作息，但会尽量调整的。' },
+            { author: '健康管理师', avatar: '健', time: '1周前', content: '可以从小的改变开始，比如每天早睡15分钟，慢慢养成习惯。' },
+            { author: '退休老人', avatar: '退', time: '6天前', content: '退休后坚持锻炼，每年体检，现在身体比工作时还好！' }
+        ]
+    };
+}
+
+// ========== 渲染帖子列表 ==========
+let currentPostId = null;
+
+function renderPosts() {
+    const posts = getPosts();
+    const favorites = getFavorites();
+    const container = document.getElementById('forum-list');
+
+    if (posts.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>暂无帖子，快来发布第一条吧！</p></div>';
+        return;
+    }
+
+    let html = '';
+    posts.forEach(post => {
+        const isFavorited = favorites.posts.some(f => f.id === post.id);
+        html += `
+        <div class="forum-item" data-post-id="${post.id}">
+            <div class="forum-header">
+                <div class="forum-avatar">${post.avatar}</div>
+                <div class="forum-author">
+                    <div class="forum-author-name">${escapeHtml(post.author)}</div>
+                    <div class="forum-time">${escapeHtml(post.time)}</div>
+                </div>
+            </div>
+            <div class="forum-title" onclick="openPostDetailModal('${post.id}')" style="cursor: pointer;">${escapeHtml(post.title)}</div>
+            <div class="forum-content" onclick="openPostDetailModal('${post.id}')" style="cursor: pointer;">${escapeHtml(post.content)}</div>
+            <div class="forum-tags">
+                ${post.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
+            </div>
+            <div class="forum-actions">
+                <div class="forum-action" onclick="toggleLike('${post.id}')">
+                    <i class="fas fa-thumbs-up"></i> <span id="likes-${post.id}">${post.likes}</span>
+                </div>
+                <div class="forum-action" onclick="openPostDetailModal('${post.id}')">
+                    <i class="fas fa-comment"></i> <span id="comments-${post.id}">${post.commentCount}</span>
+                </div>
+                <div class="forum-action ${isFavorited ? 'favorited' : ''}" onclick="toggleFavoritePost('${post.id}')">
+                    <i class="fas fa-star"></i> <span id="fav-text-${post.id}">${isFavorited ? '已收藏' : '收藏'}</span>
+                </div>
+            </div>
+        </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ========== 发布帖子 ==========
+function openPostModal() {
+    document.getElementById('postModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closePostModal() {
+    document.getElementById('postModal').style.display = 'none';
+    document.body.style.overflow = '';
+    document.getElementById('postTitle').value = '';
+    document.getElementById('postContent').value = '';
+    document.getElementById('postTags').value = '';
+}
+
+function submitPost() {
+    const title = document.getElementById('postTitle').value.trim();
+    const content = document.getElementById('postContent').value.trim();
+    const tagsStr = document.getElementById('postTags').value.trim();
+
+    if (!title) {
+        alert('请输入帖子标题');
+        return;
+    }
+    if (!content) {
+        alert('请输入帖子内容');
+        return;
+    }
+
+    const tags = tagsStr ? tagsStr.split(/\s+/).filter(t => t) : ['经验分享'];
+    const now = new Date();
+    const timeStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+
+    const newPost = {
+        id: 'post_' + Date.now(),
+        author: '我',
+        avatar: '我',
+        time: timeStr,
+        title: title,
+        content: content,
+        tags: tags,
+        likes: 0,
+        commentCount: 0
+    };
+
+    const posts = getPosts();
+    posts.unshift(newPost);
+    savePosts(posts);
+
+    closePostModal();
+    renderPosts();
+}
+
+// ========== 点赞 ==========
+function toggleLike(postId) {
+    const posts = getPosts();
+    const post = posts.find(p => p.id === postId);
+    if (post) {
+        post.likes++;
+        savePosts(posts);
+        const listLikesEl = document.getElementById('likes-' + postId);
+        if (listLikesEl) {
+            listLikesEl.textContent = post.likes;
+        }
+        const detailLikesEl = document.getElementById('detail-likes-' + postId);
+        if (detailLikesEl) {
+            detailLikesEl.textContent = post.likes;
+        }
+    }
+}
+
+// ========== 帖子详情弹窗功能 ==========
+function openPostDetailModal(postId) {
+    currentPostId = postId;
+    const posts = getPosts();
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+
+    const favorites = getFavorites();
+    const isFavorited = favorites.posts.some(f => f.id === postId);
+    const comments = getComments();
+    const postComments = comments[postId] || [];
+
+    const modalBody = document.getElementById('postDetailBody');
+
+    let html = `
+        <div style="margin-bottom: 20px;">
+            <div class="forum-header" style="margin-bottom: 16px;">
+                <div class="forum-avatar">${post.avatar}</div>
+                <div class="forum-author">
+                    <div class="forum-author-name">${escapeHtml(post.author)}</div>
+                    <div class="forum-time">${escapeHtml(post.time)}</div>
+                </div>
+            </div>
+            <h2 style="font-size: 20px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px; line-height: 1.4;">${escapeHtml(post.title)}</h2>
+            <div style="font-size: 15px; color: var(--text-secondary); line-height: 1.8; margin-bottom: 16px; white-space: pre-wrap;">${escapeHtml(post.content)}</div>
+            <div class="forum-tags" style="margin-bottom: 16px;">
+                ${post.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
+            </div>
+            <div class="forum-actions" style="border-top: 1px solid var(--border); padding-top: 12px;">
+                <div class="forum-action" onclick="toggleLike('${post.id}')">
+                    <i class="fas fa-thumbs-up"></i> <span id="detail-likes-${post.id}">${post.likes}</span>
+                </div>
+                <div class="forum-action">
+                    <i class="fas fa-comment"></i> <span id="detail-comment-action-${post.id}">${post.commentCount}</span>
+                </div>
+                <div class="forum-action ${isFavorited ? 'favorited' : ''}" onclick="toggleFavoritePost('${post.id}'); updateDetailFavState('${post.id}');">
+                    <i class="fas fa-star"></i> <span id="detail-fav-text-${post.id}">${isFavorited ? '已收藏' : '收藏'}</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="border-top: 1px solid var(--border); padding-top: 20px;">
+            <h4 style="font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 16px;">
+                <i class="fas fa-comments" style="margin-right: 8px; color: var(--primary);"></i>评论 (<span id="detail-comment-count-${post.id}">${postComments.length}</span>)
+            </h4>
+            <div id="detailCommentList" style="max-height: 300px; overflow-y: auto; margin-bottom: 16px;">
+                ${renderDetailCommentsHtml(postComments)}
+            </div>
+            <div style="display: flex; gap: 12px; align-items: flex-start;">
+                <input type="text" id="detailCommentInput" class="form-input" placeholder="写下您的评论..." style="flex: 1;" onkeypress="if(event.key==='Enter')submitDetailComment()">
+                <button class="btn btn-primary" onclick="submitDetailComment()">发送</button>
+            </div>
+        </div>
+    `;
+
+    modalBody.innerHTML = html;
+    document.getElementById('postDetailModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closePostDetailModal() {
+    document.getElementById('postDetailModal').style.display = 'none';
+    document.body.style.overflow = '';
+    currentPostId = null;
+}
+
+function renderDetailCommentsHtml(postComments) {
+    if (postComments.length === 0) {
+        return '<div style="text-align: center; color: var(--text-muted); padding: 20px;">暂无评论，快来发表第一条评论吧！</div>';
+    }
+
+    let html = '';
+    postComments.forEach(comment => {
+        html += `
+        <div style="padding: 12px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: flex-start;">
+            <div class="forum-avatar" style="width: 36px; height: 36px; font-size: 14px; flex-shrink: 0;">${comment.avatar}</div>
+            <div style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <span style="font-weight: 600; font-size: 14px; color: var(--text-primary);">${escapeHtml(comment.author)}</span>
+                    <span style="font-size: 12px; color: var(--text-muted);">${escapeHtml(comment.time)}</span>
+                </div>
+                <div style="font-size: 14px; color: var(--text-secondary); line-height: 1.5;">${escapeHtml(comment.content)}</div>
+            </div>
+        </div>
+        `;
+    });
+    return html;
+}
+
+function submitDetailComment() {
+    const input = document.getElementById('detailCommentInput');
+    const content = input.value.trim();
+
+    if (!content) {
+        alert('请输入评论内容');
+        return;
+    }
+    if (!currentPostId) return;
+
+    const now = new Date();
+    const timeStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0') + ' ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+
+    const newComment = {
+        author: '我',
+        avatar: '我',
+        time: timeStr,
+        content: content
+    };
+
+    const comments = getComments();
+    if (!comments[currentPostId]) {
+        comments[currentPostId] = [];
+    }
+    comments[currentPostId].push(newComment);
+    saveComments(comments);
+
+    const posts = getPosts();
+    const post = posts.find(p => p.id === currentPostId);
+    if (post) {
+        post.commentCount = comments[currentPostId].length;
+        savePosts(posts);
+        const listCommentsEl = document.getElementById('comments-' + currentPostId);
+        if (listCommentsEl) {
+            listCommentsEl.textContent = post.commentCount;
+        }
+        const detailCommentActionEl = document.getElementById('detail-comment-action-' + currentPostId);
+        if (detailCommentActionEl) {
+            detailCommentActionEl.textContent = post.commentCount;
+        }
+        const detailCommentCountEl = document.getElementById('detail-comment-count-' + currentPostId);
+        if (detailCommentCountEl) {
+            detailCommentCountEl.textContent = post.commentCount;
+        }
+    }
+
+    input.value = '';
+
+    const commentList = document.getElementById('detailCommentList');
+    commentList.innerHTML = renderDetailCommentsHtml(comments[currentPostId]);
+    commentList.scrollTop = commentList.scrollHeight;
+}
+
+function updateDetailFavState(postId) {
+    const favorites = getFavorites();
+    const isFavorited = favorites.posts.some(f => f.id === postId);
+    const favTextEl = document.getElementById('detail-fav-text-' + postId);
+    if (favTextEl) {
+        favTextEl.textContent = isFavorited ? '已收藏' : '收藏';
+    }
+}
+
+// ========== 收藏功能 ==========
+function toggleFavoritePost(postId) {
+    if (!CURRENT_USER) {
+        alert('请先登录后再收藏帖子');
+        window.location.href = "{{ url_for('login') }}?next=forum";
+        return;
+    }
+    const posts = getPosts();
+    const post = posts.find(p => p.id === postId);
+    if (!post) return;
+
+    const favorites = getFavorites();
+    const index = favorites.posts.findIndex(f => f.id === postId);
+
+    if (index >= 0) {
+        favorites.posts.splice(index, 1);
+        document.querySelector(`[data-post-id="${postId}"] .forum-action:nth-child(3)`).classList.remove('favorited');
+        document.getElementById('fav-text-' + postId).textContent = '收藏';
+    } else {
+        favorites.posts.push({
+            id: postId,
+            title: post.title,
+            author: post.author,
+            type: '帖子',
+            time: new Date().toISOString().split('T')[0]
+        });
+        document.querySelector(`[data-post-id="${postId}"] .forum-action:nth-child(3)`).classList.add('favorited');
+        document.getElementById('fav-text-' + postId).textContent = '已收藏';
+    }
+
+    saveFavorites(favorites);
+}
+
+// ========== 初始化 ==========
+document.addEventListener('DOMContentLoaded', function() {
+    renderPosts();
+});
+
+// ESC 关闭弹窗
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closePostModal();
+        closePostDetailModal();
+    }
+});
+
+// 点击弹窗外部关闭
+window.onclick = function(event) {
+    const postModal = document.getElementById('postModal');
+    const postDetailModal = document.getElementById('postDetailModal');
+    if (event.target === postModal) {
+        closePostModal();
+    }
+    if (event.target === postDetailModal) {
+        closePostDetailModal();
+    }
+};
+</script>
+
+<style>
+/* 弹窗样式 */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow-lg);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.modal-close {
+    font-size: 24px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.modal-close:hover {
+    color: var(--text-primary);
+}
+
+/* 表单样式 */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.form-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--text-primary);
+    background: var(--bg-card);
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.form-textarea {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--text-primary);
+    background: var(--bg-card);
+    transition: border-color 0.2s;
+    resize: vertical;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.form-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+/* 收藏状态 */
+.forum-action.favorited {
+    color: #f59e0b;
+}
+
+.forum-action.favorited i {
+    color: #f59e0b;
+}
+
+/* 空状态 */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+}
+</style>
+{% endblock %}
