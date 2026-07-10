@@ -8,6 +8,29 @@ from dashscope import Generation
 from dotenv import load_dotenv
 from PyPDF2 import PdfReader
 import re
+import logging
+import sys
+
+# 配置日志 - 确保在debug模式下也能正常输出
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# 清除默认处理器，避免重复输出
+logger.handlers.clear()
+
+# 创建控制台处理器
+stream_handler = logging.StreamHandler(sys.stdout)
+stream_handler.setLevel(logging.INFO)
+
+# 设置日志格式
+formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
+stream_handler.setFormatter(formatter)
+
+# 添加处理器
+logger.addHandler(stream_handler)
+
+# 禁止日志传递到根日志处理器，避免重复输出
+logger.propagate = False
 
 # 加载环境变量
 load_dotenv()
@@ -659,11 +682,18 @@ def chat():
 def segment_image():
     """图像分割代理接口 - 转发到后端分割服务"""
     try:
+        logger.info(f"\n{'='*60}")
+        logger.info(f"[SEGMENT] 收到分割请求")
+        logger.info(f"[SEGMENT] 请求方法: {request.method}")
+        logger.info(f"[SEGMENT] 请求内容类型: {request.content_type}")
+        
         if 'file' not in request.files:
+            logger.info(f"[SEGMENT] 错误: 未上传文件")
             return jsonify({'success': False, 'error': '未上传文件'}), 400
 
         file = request.files['file']
         if file.filename == '':
+            logger.info(f"[SEGMENT] 错误: 文件名不能为空")
             return jsonify({'success': False, 'error': '文件名不能为空'}), 400
 
         # 将文件读取到内存
@@ -671,36 +701,46 @@ def segment_image():
 
         # 计算MD5哈希值
         image_hash = hashlib.md5(file_content).hexdigest()
-        print(f"\n[前端] 收到分割请求")
-        print(f"[前端] 文件名: {file.filename}")
-        print(f"[前端] MD5哈希: {image_hash}")
+        logger.info(f"[SEGMENT] 文件名: {file.filename}")
+        logger.info(f"[SEGMENT] 文件大小: {len(file_content)} bytes")
+        logger.info(f"[SEGMENT] MD5哈希: {image_hash}")
+        logger.info(f"[SEGMENT] 文件类型: {file.content_type}")
 
         # 转发到后端分割服务
+        logger.info(f"[SEGMENT] 转发到分割服务: {SEGMENT_API_URL}")
         files = {'file': (file.filename, io.BytesIO(file_content), file.content_type or 'image/jpeg')}
         response = requests.post(SEGMENT_API_URL, files=files, timeout=120)
 
+        logger.info(f"[SEGMENT] 分割服务响应状态: {response.status_code}")
         if response.status_code == 200:
             result = response.json()
             # 将哈希值添加到返回结果中
             result['image_hash'] = image_hash
-            print(f"[前端] 分割成功，数据集: {result.get('dataset', 'unknown')}")
+            logger.info(f"[SEGMENT] 分割成功，数据集: {result.get('dataset', 'unknown')}")
             if result.get('original_name'):
-                print(f"[前端] 匹配原图: {result['original_name']}")
+                logger.info(f"[SEGMENT] 匹配原图: {result['original_name']}")
+            logger.info(f"[SEGMENT] {'='*60}")
             return jsonify(result)
         else:
+            logger.info(f"[SEGMENT] 错误: 分割服务错误 {response.status_code}")
+            logger.info(f"[SEGMENT] {'='*60}")
             return jsonify({
                 'success': False,
                 'error': f'分割服务错误: {response.status_code}'
             }), 500
 
     except requests.exceptions.ConnectionError:
+        logger.info(f"[SEGMENT] 错误: 无法连接到分割服务 {SEGMENT_API_URL}")
+        logger.info(f"[SEGMENT] {'='*60}")
         return jsonify({
             'success': False,
             'error': '无法连接到分割服务，请确认后端服务已启动 (python api_web_final.py)'
         }), 503
     except Exception as e:
         import traceback
+        logger.info(f"[SEGMENT] 错误: {str(e)}")
         traceback.print_exc()
+        logger.info(f"[SEGMENT] {'='*60}")
         return jsonify({
             'success': False,
             'error': f'服务器错误: {str(e)}'
@@ -713,41 +753,59 @@ def segment_image():
 def classify_image():
     """图像分类代理接口 - 转发到后端分类服务"""
     try:
+        logger.info(f"\n{'='*60}")
+        logger.info(f"[CLASSIFY] 收到分类请求")
+        logger.info(f"[CLASSIFY] 请求方法: {request.method}")
+        logger.info(f"[CLASSIFY] 请求内容类型: {request.content_type}")
+        
         if 'file' not in request.files:
+            logger.info(f"[CLASSIFY] 错误: 未上传文件")
             return jsonify({'success': False, 'error': '未上传文件'}), 400
 
         file = request.files['file']
         if file.filename == '':
+            logger.info(f"[CLASSIFY] 错误: 文件名不能为空")
             return jsonify({'success': False, 'error': '文件名不能为空'}), 400
 
         file_content = file.read()
         image_hash = hashlib.md5(file_content).hexdigest()
-        print(f"\n[前端] 收到分类请求")
-        print(f"[前端] 文件名: {file.filename}")
-        print(f"[前端] MD5哈希: {image_hash}")
+        logger.info(f"[CLASSIFY] 文件名: {file.filename}")
+        logger.info(f"[CLASSIFY] 文件大小: {len(file_content)} bytes")
+        logger.info(f"[CLASSIFY] MD5哈希: {image_hash}")
+        logger.info(f"[CLASSIFY] 文件类型: {file.content_type}")
 
+        logger.info(f"[CLASSIFY] 转发到分类服务: {CLASSIFY_API_URL}")
         files = {'file': (file.filename, io.BytesIO(file_content), file.content_type or 'image/jpeg')}
         response = requests.post(CLASSIFY_API_URL, files=files, timeout=120)
 
+        logger.info(f"[CLASSIFY] 分类服务响应状态: {response.status_code}")
         if response.status_code == 200:
             result = response.json()
             result['image_hash'] = image_hash
-            print(f"[前端] 分类成功，类别: {result.get('class_name', 'unknown')}")
+            logger.info(f"[CLASSIFY] 分类成功，类别: {result.get('class_name', 'unknown')}")
+            logger.info(f"[CLASSIFY] 匹配方式: {result.get('match_type', 'unknown')}")
+            logger.info(f"[CLASSIFY] {'='*60}")
             return jsonify(result)
         else:
+            logger.info(f"[CLASSIFY] 错误: 分类服务错误 {response.status_code}")
+            logger.info(f"[CLASSIFY] {'='*60}")
             return jsonify({
                 'success': False,
                 'error': f'分类服务错误: {response.status_code}'
             }), 500
 
     except requests.exceptions.ConnectionError:
+        logger.info(f"[CLASSIFY] 错误: 无法连接到分类服务 {CLASSIFY_API_URL}")
+        logger.info(f"[CLASSIFY] {'='*60}")
         return jsonify({
             'success': False,
             'error': '无法连接到分类服务，请确认后端分类服务已启动'
         }), 503
     except Exception as e:
         import traceback
+        logger.info(f"[CLASSIFY] 错误: {str(e)}")
         traceback.print_exc()
+        logger.info(f"[CLASSIFY] {'='*60}")
         return jsonify({
             'success': False,
             'error': f'服务器错误: {str(e)}'

@@ -53,6 +53,7 @@
         </div>
         <div class="modal-body">
             <div id="trendInputSection">
+                <!-- 历史趋势分析版块 -->
                 <div class="history-trend-section" style="margin-bottom: 24px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                         <h4 style="margin: 0; font-size: 15px; color: var(--text-primary);">
@@ -61,9 +62,11 @@
                         <span id="historyTrendCount" style="font-size: 12px; color: var(--text-muted); background: #f1f5f9; padding: 2px 10px; border-radius: 12px;">共 0 条记录</span>
                     </div>
                     <div id="historyTrendContent" style="max-height: 320px; overflow-y: auto;">
+                        <!-- 动态渲染历史趋势记录 -->
                     </div>
                 </div>
 
+                <!-- 选择检测记录区域 -->
                 <div style="margin-bottom: 20px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                         <h4 style="margin: 0; font-size: 15px; color: var(--text-primary);">
@@ -90,6 +93,7 @@
                     </p>
                 </div>
 
+                <!-- 自定义描述区域 -->
                 <div style="margin-bottom: 16px;">
                     <h4 style="margin: 0 0 12px 0; font-size: 15px; color: var(--text-primary);">
                         <i class="fas fa-edit" style="margin-right: 6px; color: var(--primary);"></i>补充描述（可选）
@@ -117,12 +121,13 @@
     </div>
 </div>
 
-<!-- AI自助检测 -->
+
+<!-- ==================== AI自助检测 - 页面内显示（非弹窗） ==================== -->
 <div id="upload-section" class="card">
     <div class="card-header">
         <div>
-            <div class="card-title">AI自助检测</div>
-            <div class="card-subtitle">上传医学影像，获取 AI 分析结果</div>
+            <div class="card-title">病灶检测</div>
+            <div class="card-subtitle">上传医学影像，获取分析结果</div>
         </div>
     </div>
 
@@ -152,10 +157,9 @@
                         <i class="fas fa-search-plus"></i> 双击放大
                     </div>
                 </div>
-                <div style="margin-top: 8px; text-align: right;">
-                    <button onclick="removeSelectedFile()" style="background: none; border: 1px solid #e2e8f0; color: #64748b; cursor: pointer; font-size: 13px; padding: 6px 12px; border-radius: 6px; transition: all 0.2s;" onmouseover="this.style.background='rgba(239,68,68,0.05)'; this.style.color='#ef4444'; this.style.borderColor='#ef4444'" onmouseout="this.style.background='none'; this.style.color='#64748b'; this.style.borderColor='#e2e8f0'">
-                        <i class="fas fa-trash-alt"></i> 删除图片
-                    </button>
+                <div id="fileInfoBar" style="display: none;">
+                    <span id="selectedFileName" style="display: none;"></span>
+                    <span id="fileSize" style="display: none;"></span>
                 </div>
             </div>
         </div>
@@ -173,12 +177,13 @@
     <!-- 步骤3：加载中 -->
     <div id="page-loading-area" style="display: none; padding: 40px; text-align: center;">
         <div class="loading-spinner"></div>
-        <p id="loading-text" style="margin-top: 16px; color: var(--text-primary);">正在调用模型进行分析，请稍候...</p>
+        <p style="margin-top: 16px; color: var(--text-primary);">正在调用模型进行分割，请稍候...</p>
         <p style="font-size: 13px; color: var(--text-muted);">模型正在分析医学影像特征</p>
     </div>
 
-    <!-- 步骤4：分割结果 -->
+    <!-- 步骤4：分割结果（三张图对比 + 系数） -->
     <div id="page-result-area" style="display: none; padding: 20px;">
+        <!-- 图片名称信息 -->
         <div id="image-names-info" style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 10px; padding: 14px 18px; margin-bottom: 16px;">
             <div style="font-weight: 600; color: #0369a1; margin-bottom: 8px; font-size: 14px;"><i class="fas fa-file-alt" style="margin-right: 6px;"></i>匹配到的文件信息</div>
             <div id="image-names-content" style="font-size: 13px; color: #334155; line-height: 1.8;"></div>
@@ -186,22 +191,16 @@
 
         <!-- 分类结果展示 -->
         <div id="classification-result" style="display: none; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
-            <div style="font-weight: 600; color: #1e293b; margin-bottom: 14px; font-size: 15px;">
-                <i class="fas fa-microscope" style="margin-right: 8px;"></i>AI 分类结果
-            </div>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
                 <div style="background: white; border-radius: 10px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
                     <div style="font-size: 12px; color: #64748b; margin-bottom: 6px;"><i class="fas fa-tag" style="margin-right: 4px;"></i>分类类别</div>
-                    <div id="cls-class-name" style="font-size: 22px; font-weight: 700; color: #1e293b;">-</div>
+                    <div id="cls-class-name" style="font-size: 22px; font-weight: 700; color: #16a34a;">-</div>
                 </div>
-                <div style="background: white; border-radius: 10px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 6px;"><i class="fas fa-percentage" style="margin-right: 4px;"></i>置信度</div>
-                    <div id="cls-confidence" style="font-size: 22px; font-weight: 700; color: #1e293b;">-</div>
-                </div>
+
             </div>
         </div>
 
-        <!-- 分类结果图片 -->
+        <!-- 分类结果图片（仅显示原图） -->
         <div id="classification-images" style="display: none; margin-bottom: 16px;">
             <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
                 <div style="background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center;">原始图像</div>
@@ -209,8 +208,8 @@
             </div>
         </div>
 
-        <!-- 分割相关区域 -->
-        <div id="segment-area">
+        <!-- 三张图对比（分割模式） -->
+        <div id="segment-images-area">
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
             <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
                 <div style="background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center;">原始图像</div>
@@ -228,8 +227,10 @@
                 <div id="label-gold" style="padding: 6px 10px; font-size: 11px; color: #64748b; text-align: center; background: #fafafa; border-top: 1px solid #f1f5f9;"></div>
             </div>
         </div>
+        </div>
 
-        <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+        <!-- 分割系数（来自CSV） -->
+        <div id="segment-metrics-area" style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
             <h4 style="margin: 0 0 12px 0; color: #1e293b; font-size: 15px;"><i class="fas fa-tachometer-alt" style="margin-right: 8px;"></i>分割质量指标</h4>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
                 <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
@@ -237,29 +238,21 @@
                     <div id="res-accuracy" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
                 </div>
                 <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Dice</div>
-                    <div id="res-dice" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Dice_Kidney</div>
+                    <div id="res-dice-kidney" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
                 </div>
                 <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">IoU</div>
-                    <div id="res-iou" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">IoU_Kidney</div>
+                    <div id="res-iou-kidney" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
                 </div>
                 <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">HD95</div>
-                    <div id="res-hd95" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
-                </div>
-                <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Precision</div>
-                    <div id="res-precision" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
-                </div>
-                <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Recall</div>
-                    <div id="res-recall" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">HD95_Kidney</div>
+                    <div id="res-hd95-kidney" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
                 </div>
             </div>
         </div>
-        </div>
 
+                <!-- 切片浏览器 -->
         <div id="slice-browser" style="display: none; margin-top: 20px; background: #f8fafc; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                 <h4 style="margin: 0; color: #1e293b; font-size: 15px;">
@@ -298,6 +291,8 @@
             </div>
         </div>
 
+
+        <!-- 处理信息 -->
         <div id="result-info" style="display: flex; gap: 8px; justify-content: center; margin-bottom: 16px;"></div>
 
         <div style="text-align: right;">
@@ -309,7 +304,7 @@
     </div>
 </div>
 
-<!-- 我的检测记录区域 -->
+<!-- ==================== 我的检测记录区域 ==================== -->
 <div id="records-section" class="card" style="margin-top: 20px;">
     <div class="card-header">
         <div>
@@ -319,6 +314,7 @@
         <span id="records-count" class="card-more">共 0 条记录</span>
     </div>
     <div id="records-list">
+        <!-- 动态渲染记录列表 -->
     </div>
     <div id="records-empty" style="text-align: center; padding: 40px 20px; color: var(--text-muted);">
         <i class="fas fa-folder-open" style="font-size: 40px; margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
@@ -327,84 +323,139 @@
     </div>
 </div>
 
-<!-- 记录详情弹窗 -->
+<!-- ==================== 记录详情弹窗 ==================== -->
 <div id="recordDetailModal" class="modal" style="display: none;">
-    <div class="modal-content" style="max-width: 900px; width: 92%;">
+    <div class="modal-content" style="max-width: 1000px; width: 95%;">
         <div class="modal-header">
             <h3 id="recordDetailTitle">检测记录详情</h3>
-            <span class="modal-close" onclick="closeRecordDetailModal()">&times;</span>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button class="btn btn-primary btn-sm" onclick="exportRecordPDF()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none;">
+                    <i class="fas fa-file-pdf"></i> 导出报告
+                </button>
+                <span class="modal-close" onclick="closeRecordDetailModal()">&times;</span>
+            </div>
         </div>
         <div class="modal-body">
+            <!-- 1. 记录信息 -->
             <div id="recordDetailMeta" style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 10px; padding: 14px 18px; margin-bottom: 16px;">
+                <!-- 动态填充 -->
             </div>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
-                <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
-                    <div style="background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center;">原始图像</div>
-                    <img id="detail-original" src="" alt="原始图像" style="width: 100%; height: 200px; object-fit: contain; background: #f8fafc; cursor: zoom-in;" ondblclick="openImagePreview('detail-original')">
-                </div>
-                <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
-                    <div style="background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center;">分割结果</div>
-                    <img id="detail-segment" src="" alt="分割结果" style="width: 100%; height: 200px; object-fit: contain; background: #f8fafc; cursor: zoom-in;" ondblclick="openImagePreview('detail-segment')">
-                </div>
-                <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
-                    <div style="background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center;">金标准</div>
-                    <img id="detail-gold" src="" alt="金标准" style="width: 100%; height: 200px; object-fit: contain; background: #f8fafc; cursor: zoom-in;" ondblclick="openImagePreview('detail-gold')">
-                </div>
-            </div>
-            <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <h4 style="margin: 0; color: #1e293b; font-size: 15px;"><i class="fas fa-film" style="margin-right: 8px; color: var(--primary);"></i>切片浏览器 - 病灶动态观察</h4>
-                    <span id="detail-slice-browser-meta" style="font-size: 12px; color: #64748b;"></span>
-                </div>
-                <div id="detail-slice-browser-viewer" style="display: none;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-                        <div>
-                            <div style="background: #f1f5f9; padding: 6px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center; border-radius: 6px 6px 0 0;">原始切片</div>
-                            <div style="background: #000; border-radius: 0 0 6px 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 200px;">
-                                <img id="detail-slice-orig" src="" alt="原始切片" style="max-width: 100%; max-height: 280px; object-fit: contain; cursor: zoom-in;" ondblclick="openImagePreview('detail-slice-orig')">
-                            </div>
+
+            <!-- 分类模式详情区域 -->
+            <div id="classification-detail-area" style="display: none;">
+                <!-- 2. 原始图 + 3. 类别 -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                    <!-- 原始图像 -->
+                    <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
+                        <div style="background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center;">原始图像</div>
+                        <img id="detail-original" src="" alt="原始图像" style="width: 100%; height: 250px; object-fit: contain; background: #f8fafc; cursor: zoom-in;" ondblclick="openImagePreview('detail-original')">
+                    </div>
+                    <!-- 分类结果 -->
+                    <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white; display: flex; flex-direction: column;">
+                        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 8px 12px; font-size: 13px; font-weight: 600; color: white; text-align: center;">
+                            <i class="fas fa-tags" style="margin-right: 6px;"></i>分类结果
                         </div>
-                        <div>
-                            <div style="background: #f1f5f9; padding: 6px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center; border-radius: 6px 6px 0 0;">分割切片</div>
-                            <div style="background: #000; border-radius: 0 0 6px 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 200px;">
-                                <img id="detail-slice-seg" src="" alt="分割切片" style="max-width: 100%; max-height: 280px; object-fit: contain; cursor: zoom-in;" ondblclick="openImagePreview('detail-slice-seg')">
+                        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                            <div style="text-align: center;">
+                                <div style="font-size: 14px; color: #64748b; margin-bottom: 8px;">分类类别</div>
+                                <div id="cls-detail-class-name" style="font-size: 32px; font-weight: 700; color: #16a34a; margin-bottom: 16px;">-</div>
+
                             </div>
                         </div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                        <button onclick="navigateDetailSlice(-1)" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 14px; cursor: pointer; color: #475569; font-size: 14px; transition: all 0.2s;"><i class="fas fa-chevron-left"></i></button>
-                        <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
-                            <input type="range" id="detail-slice-slider" min="0" max="0" value="0" style="flex: 1; cursor: pointer;" oninput="onDetailSliceSliderChange(this.value)">
-                        </div>
-                        <button onclick="navigateDetailSlice(1)" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 14px; cursor: pointer; color: #475569; font-size: 14px; transition: all 0.2s;"><i class="fas fa-chevron-right"></i></button>
-                    </div>
-                    <div style="display: flex; justify-content: center; align-items: center; gap: 12px;">
-                        <button id="detail-slice-play-btn" onclick="toggleDetailSlicePlay()" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 16px; cursor: pointer; color: #475569; font-size: 13px; display: flex; align-items: center; gap: 6px;">
-                            <i class="fas fa-play" id="detail-slice-play-icon"></i> <span id="detail-slice-play-text">自动播放</span>
-                        </button>
-                        <select id="detail-slice-speed" onchange="changeDetailSliceSpeed(this.value)" style="padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; color: #475569; background: white; cursor: pointer;">
-                            <option value="60">快速</option>
-                            <option value="120" selected>正常</option>
-                            <option value="300">慢速</option>
-                        </select>
-                    </div>
-                    <div id="detail-slice-info" style="text-align: center; margin-top: 10px; font-size: 12px; color: #64748b;"></div>
-                </div>
-                <div id="detail-slice-browser-empty" style="text-align: center; padding: 24px; color: #94a3b8; font-size: 13px;">
-                    <i class="fas fa-th-large" style="font-size: 24px; margin-bottom: 8px; display: block; color: #cbd5e1;"></i>
-                    暂无切片浏览器数据
-                </div>
-            </div>
-            <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
-                <h4 style="margin: 0 0 12px 0; color: #1e293b; font-size: 15px;"><i class="fas fa-tachometer-alt" style="margin-right: 8px;"></i>分割质量指标</h4>
-                <div id="detail-metrics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
                 </div>
             </div>
 
-            <div style="text-align: right;">
-                <button class="btn btn-primary" onclick="exportRecordToPDF()">
-                    <i class="fas fa-file-pdf"></i> 导出PDF报告
-                </button>
+            <!-- 分割模式详情区域 -->
+            <div id="segmentation-detail-area">
+                <!-- 2. 原始图 + 分割结果 + 金标准 -->
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+                    <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
+                        <div style="background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center;">原始图像</div>
+                        <img id="detail-original-seg" src="" alt="原始图像" style="width: 100%; height: 200px; object-fit: contain; background: #f8fafc; cursor: zoom-in;" ondblclick="openImagePreview('detail-original-seg')">
+                    </div>
+                    <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
+                        <div style="background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center;">分割结果</div>
+                        <img id="detail-segment" src="" alt="分割结果" style="width: 100%; height: 200px; object-fit: contain; background: #f8fafc; cursor: zoom-in;" ondblclick="openImagePreview('detail-segment')">
+                    </div>
+                    <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
+                        <div style="background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center;">金标准</div>
+                        <img id="detail-gold" src="" alt="金标准" style="width: 100%; height: 200px; object-fit: contain; background: #f8fafc; cursor: zoom-in;" ondblclick="openImagePreview('detail-gold')">
+                    </div>
+                </div>
+                <!-- 切片浏览器 - 病灶动态观察 -->
+                <div id="slice-browser-section" style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h4 style="margin: 0; color: #1e293b; font-size: 15px;"><i class="fas fa-film" style="margin-right: 8px; color: var(--primary);"></i>切片浏览器 - 病灶动态观察</h4>
+                        <span id="detail-slice-browser-meta" style="font-size: 12px; color: #64748b;"></span>
+                    </div>
+                    <div id="detail-slice-browser-viewer" style="display: none;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                            <div>
+                                <div style="background: #f1f5f9; padding: 6px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center; border-radius: 6px 6px 0 0;">原始切片</div>
+                                <div style="background: #000; border-radius: 0 0 6px 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 200px;">
+                                    <img id="detail-slice-orig" src="" alt="原始切片" style="max-width: 100%; max-height: 280px; object-fit: contain; cursor: zoom-in;" ondblclick="openImagePreview('detail-slice-orig')">
+                                </div>
+                            </div>
+                            <div>
+                                <div style="background: #f1f5f9; padding: 6px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center; border-radius: 6px 6px 0 0;">分割切片</div>
+                                <div style="background: #000; border-radius: 0 0 6px 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 200px;">
+                                    <img id="detail-slice-seg" src="" alt="分割切片" style="max-width: 100%; max-height: 280px; object-fit: contain; cursor: zoom-in;" ondblclick="openImagePreview('detail-slice-seg')">
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                            <button onclick="navigateDetailSlice(-1)" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 14px; cursor: pointer; color: #475569; font-size: 14px; transition: all 0.2s;"><i class="fas fa-chevron-left"></i></button>
+                            <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
+                                <input type="range" id="detail-slice-slider" min="0" max="0" value="0" style="flex: 1; cursor: pointer;" oninput="onDetailSliceSliderChange(this.value)">
+                            </div>
+                            <button onclick="navigateDetailSlice(1)" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 14px; cursor: pointer; color: #475569; font-size: 14px; transition: all 0.2s;"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                        <div style="display: flex; justify-content: center; align-items: center; gap: 12px;">
+                            <button id="detail-slice-play-btn" onclick="toggleDetailSlicePlay()" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 16px; cursor: pointer; color: #475569; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+                                <i class="fas fa-play" id="detail-slice-play-icon"></i> <span id="detail-slice-play-text">自动播放</span>
+                            </button>
+                            <select id="detail-slice-speed" onchange="changeDetailSliceSpeed(this.value)" style="padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; color: #475569; background: white; cursor: pointer;">
+                                <option value="60">快速</option>
+                                <option value="120" selected>正常</option>
+                                <option value="300">慢速</option>
+                            </select>
+                        </div>
+                        <div id="detail-slice-info" style="text-align: center; margin-top: 10px; font-size: 12px; color: #64748b;"></div>
+                    </div>
+                    <div id="detail-slice-browser-empty" style="text-align: center; padding: 24px; color: #94a3b8; font-size: 13px;">
+                        <i class="fas fa-th-large" style="font-size: 24px; margin-bottom: 8px; display: block; color: #cbd5e1;"></i>
+                        暂无切片浏览器数据
+                    </div>
+                </div>
+                <!-- 分割质量指标 -->
+                <div id="segment-metrics-section" style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                    <h4 style="margin: 0 0 12px 0; color: #1e293b; font-size: 15px;"><i class="fas fa-tachometer-alt" style="margin-right: 8px;"></i>分割质量指标</h4>
+                    <div id="detail-metrics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                        <!-- 动态填充 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. AI智能分析区域（可选） -->
+            <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; padding: 16px; border: 1px solid #bae6fd;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h4 style="margin: 0; color: #0369a1; font-size: 15px;"><i class="fas fa-brain" style="margin-right: 8px;"></i>AI智能分析报告</h4>
+                    <button id="btn-ai-analysis" class="btn btn-primary btn-sm" onclick="generateAIAnalysis()">
+                        <i class="fas fa-magic"></i> 生成AI分析
+                    </button>
+                </div>
+                <div id="ai-analysis-loading" style="display: none; text-align: center; padding: 24px;">
+                    <div style="display: inline-block; width: 32px; height: 32px; border: 3px solid #bae6fd; border-top-color: #0ea5e9; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="margin-top: 12px; color: #0369a1; font-size: 13px;">AI正在分析检测结果，请稍候...</p>
+                </div>
+                <div id="ai-analysis-result" style="display: none;">
+                    <!-- AI分析结果将动态填充 -->
+                </div>
+                <div id="ai-analysis-empty" style="text-align: center; padding: 24px; color: #64748b; font-size: 13px;">
+                    <i class="fas fa-robot" style="font-size: 28px; margin-bottom: 8px; display: block; color: #0ea5e9;"></i>
+                    点击上方按钮，AI将为您生成专业的检测结果分析报告
+                </div>
             </div>
         </div>
     </div>
@@ -422,14 +473,13 @@
 </div>
 
 <script>
+// ========== 页面内上传功能（非弹窗） ==========
 let selectedFile = null;
+// 当前检测结果的缓存（用于保存记录）
 let currentResultData = null;
-let currentMode = 'segment';
-let sliceData = null;
-let slicePlayTimer = null;
-let sliceIsPlaying = false;
-let currentSliceIndex = 0;
+let currentMode = 'segment'; // 'segment' 或 'classify'
 
+// 页面加载完成后添加事件监听器
 document.addEventListener('DOMContentLoaded', function() {
     const dropZone = document.getElementById('dropZone');
     if (dropZone) {
@@ -458,37 +508,53 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+
+    // 加载已保存的记录列表
     renderRecordsList();
 });
 
+// 处理文件选择 - 显示预览
 function handleFileSelect(event) {
     const file = event.target.files[0];
     if (file) {
         selectedFile = file;
+
+        document.getElementById('selectedFileName').textContent = file.name;
+        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+        document.getElementById('fileSize').textContent = '(' + sizeMB + ' MB)';
+
         const reader = new FileReader();
         reader.onload = function(e) {
             document.getElementById('previewImg').src = e.target.result;
         };
         reader.readAsDataURL(file);
+
+        // 切换到预览视图
         document.getElementById('page-upload-area').style.display = 'none';
         document.getElementById('page-preview-area').style.display = 'block';
     }
 }
 
+// 删除已选图片
 function removeSelectedFile() {
     selectedFile = null;
     document.getElementById('fileInput').value = '';
     document.getElementById('previewImg').src = '';
+    document.getElementById('selectedFileName').textContent = '';
+    document.getElementById('fileSize').textContent = '';
+
     document.getElementById('page-preview-area').style.display = 'none';
     document.getElementById('page-upload-area').style.display = 'block';
 }
 
+// 格式化指标值
 function formatMetric(value) {
     if (value === '-' || value === undefined || value === null) return '-';
     if (typeof value === 'number') return value.toFixed(4);
     return value;
 }
 
+// 开始分割 - 调用后端分割模型
 async function startSegmentation() {
     if (!selectedFile) {
         alert('请先选择图片文件');
@@ -496,6 +562,7 @@ async function startSegmentation() {
     }
     currentMode = 'segment';
 
+    // 显示加载
     document.getElementById('page-preview-area').style.display = 'none';
     document.getElementById('page-loading-area').style.display = 'block';
 
@@ -513,15 +580,25 @@ async function startSegmentation() {
         document.getElementById('page-loading-area').style.display = 'none';
 
         if (data.success) {
+            // 缓存当前结果数据（用于保存记录）
             currentResultData = data;
+
+            // 显示结果区域
             document.getElementById('page-result-area').style.display = 'block';
 
-            document.getElementById('classification-result').style.display = 'none';
-            document.getElementById('classification-images').style.display = 'none';
-            document.getElementById('segment-area').style.display = 'block';
-            document.getElementById('image-names-info').style.display = 'block';
-            document.getElementById('saveRecordBtn').style.display = 'inline-block';
+            // 显示分割相关，隐藏分类相关
+            const classResult = document.getElementById('classification-result');
+            if (classResult) classResult.style.display = 'none';
+            const classImages = document.getElementById('classification-images');
+            if (classImages) classImages.style.display = 'none';
+            const segImages = document.getElementById('segment-images-area');
+            if (segImages) segImages.style.display = 'block';
+            const namesInfo = document.getElementById('image-names-info');
+            if (namesInfo) namesInfo.style.display = 'block';
+            const segMetrics = document.getElementById('segment-metrics-area');
+            if (segMetrics) segMetrics.style.display = 'block';
 
+            // 显示图片名称信息
             const namesContent = document.getElementById('image-names-content');
             let namesHtml = '';
             if (data.dataset === 'kits19') {
@@ -549,6 +626,7 @@ async function startSegmentation() {
             }
             namesContent.innerHTML = namesHtml;
 
+            // 显示图片（三张图）
             if (data.images) {
                 if (data.images.original) {
                     document.getElementById('result-original').src = 'data:image/png;base64,' + data.images.original;
@@ -562,20 +640,21 @@ async function startSegmentation() {
                     document.getElementById('result-gold').src = 'data:image/png;base64,' + data.images.gold_standard;
                     document.getElementById('label-gold').textContent = data.gold_name ? '金标准: ' + data.gold_name : '金标准';
                 } else {
+                    // 如果没有金标准，显示占位图
                     document.getElementById('result-gold').src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect fill="%23f1f5f9" width="200" height="200"/><text fill="%2394a3b8" x="50%" y="50%" text-anchor="middle" dy=".3em">无金标准</text></svg>';
                     document.getElementById('label-gold').textContent = '无金标准';
                 }
             }
 
+            // 显示分割系数（来自CSV）
             if (data.metrics) {
                 document.getElementById('res-accuracy').textContent = formatMetric(data.metrics.accuracy);
-                document.getElementById('res-dice').textContent = formatMetric(data.metrics.dice);
-                document.getElementById('res-iou').textContent = formatMetric(data.metrics.iou);
-                document.getElementById('res-hd95').textContent = formatMetric(data.metrics.hd95);
-                document.getElementById('res-precision').textContent = formatMetric(data.metrics.precision);
-                document.getElementById('res-recall').textContent = formatMetric(data.metrics.recall);
+                document.getElementById('res-dice-kidney').textContent = formatMetric(data.metrics.dice_kidney);
+                document.getElementById('res-iou-kidney').textContent = formatMetric(data.metrics.iou_kidney);
+                document.getElementById('res-hd95-kidney').textContent = formatMetric(data.metrics.hd95_kidney);
             }
 
+            // 显示处理信息
             const infoDiv = document.getElementById('result-info');
             let infoHtml = '';
             if (data.dataset) {
@@ -584,9 +663,10 @@ async function startSegmentation() {
             if (data.processing_time) {
                 infoHtml += '<span style="padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: #f3f4f6; color: #4b5563;">处理时间: ' + data.processing_time + 's</span>';
             }
-            infoDiv.innerHTML = infoHtml;
+           infoDiv.innerHTML = infoHtml;
             infoDiv.style.display = 'flex';
 
+            // 加载切片浏览器
             const patientId = parsePatientId(data.original_name || '');
             if (patientId && data.dataset) {
                 loadPatientSlices(patientId, data.dataset);
@@ -605,6 +685,10 @@ async function startSegmentation() {
     }
 }
 
+// 分类API服务地址（分类服务运行在5005端口，分割服务保持原地址不变）
+const CLASSIFY_API_BASE = 'http://127.0.0.1:5005';
+
+// 开始分类 - 调用后端分类模型
 async function startClassification() {
     if (!selectedFile) {
         alert('请先选择图片文件');
@@ -612,15 +696,17 @@ async function startClassification() {
     }
     currentMode = 'classify';
 
-    document.getElementById('loading-text').textContent = '正在调用分类模型，请稍候...';
+    // 显示加载
     document.getElementById('page-preview-area').style.display = 'none';
     document.getElementById('page-loading-area').style.display = 'block';
+    document.querySelector('#page-loading-area p').textContent = '正在调用模型进行分类，请稍候...';
+    document.querySelector('#page-loading-area p + p').textContent = '模型正在分析医学影像特征';
 
     const formData = new FormData();
     formData.append('file', selectedFile);
 
     try {
-        const response = await fetch('/api/classify', {
+        const response = await fetch(CLASSIFY_API_BASE + '/api/classify', {
             method: 'POST',
             body: formData
         });
@@ -630,25 +716,40 @@ async function startClassification() {
         document.getElementById('page-loading-area').style.display = 'none';
 
         if (data.success) {
+            // 缓存当前结果数据（用于保存记录）
             currentResultData = data;
+
+            // 显示结果区域
             document.getElementById('page-result-area').style.display = 'block';
 
-            document.getElementById('classification-result').style.display = 'block';
-            document.getElementById('classification-images').style.display = 'block';
-            document.getElementById('segment-area').style.display = 'none';
-            document.getElementById('image-names-info').style.display = 'none';
-            document.getElementById('slice-browser').style.display = 'none';
-            document.getElementById('saveRecordBtn').style.display = 'inline-block';
+            // 隐藏分割相关，显示分类相关
+            const segImages = document.getElementById('segment-images-area');
+            if (segImages) segImages.style.display = 'none';
+            const namesInfo = document.getElementById('image-names-info');
+            if (namesInfo) namesInfo.style.display = 'none';
+            const segMetrics = document.getElementById('segment-metrics-area');
+            if (segMetrics) segMetrics.style.display = 'none';
+            const classResult = document.getElementById('classification-result');
+            if (classResult) classResult.style.display = 'block';
+            const classImages = document.getElementById('classification-images');
+            if (classImages) classImages.style.display = 'block';
 
-            document.getElementById('cls-class-name').textContent = data.class_name || '未知';
-            document.getElementById('cls-confidence').textContent = data.confidence ? (data.confidence * 100).toFixed(2) + '%' : '-';
+            // 显示分类结果
+            document.getElementById('cls-class-name').textContent = data.class_name || '-';
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('cls-original-img').src = e.target.result;
-            };
-            reader.readAsDataURL(selectedFile);
+            // 显示图片（仅原图）- 优先使用后端返回的图片，否则使用预览图
+            const clsOriginalImg = document.getElementById('cls-original-img');
+            if (data.images && data.images.original) {
+                clsOriginalImg.src = 'data:image/png;base64,' + data.images.original;
+            } else if (selectedFile) {
+                // 使用预览图的 src（FileReader 读取的 data URL）
+                const previewImg = document.getElementById('previewImg');
+                if (previewImg && previewImg.src) {
+                    clsOriginalImg.src = previewImg.src;
+                }
+            }
 
+            // 显示处理信息
             const infoDiv = document.getElementById('result-info');
             let infoHtml = '';
             if (data.processing_time) {
@@ -656,6 +757,10 @@ async function startClassification() {
             }
             infoDiv.innerHTML = infoHtml;
             infoDiv.style.display = 'flex';
+
+            // 隐藏切片浏览器
+            document.getElementById('slice-browser').style.display = 'none';
+
         } else {
             alert('分类失败: ' + (data.error || '未知错误'));
             document.getElementById('page-preview-area').style.display = 'block';
@@ -667,31 +772,34 @@ async function startClassification() {
     }
 }
 
+// 重置上传
 function resetUpload() {
     selectedFile = null;
     currentResultData = null;
     currentMode = 'segment';
     document.getElementById('fileInput').value = '';
     document.getElementById('previewImg').src = '';
+    document.getElementById('selectedFileName').textContent = '';
+    document.getElementById('fileSize').textContent = '';
     document.getElementById('page-result-area').style.display = 'none';
     document.getElementById('page-loading-area').style.display = 'none';
     document.getElementById('page-preview-area').style.display = 'none';
     document.getElementById('page-upload-area').style.display = 'block';
-    document.getElementById('classification-result').style.display = 'none';
-    document.getElementById('classification-images').style.display = 'none';
-    document.getElementById('segment-area').style.display = 'block';
+    // 清理切片浏览器
     document.getElementById('slice-browser').style.display = 'none';
     if (slicePlayTimer) { clearInterval(slicePlayTimer); slicePlayTimer = null; }
     sliceIsPlaying = false;
     sliceData = null;
 }
 
+// ========== 保存记录功能 ==========
 function saveRecord() {
     if (!currentResultData) {
         alert('没有可保存的检测结果');
         return;
     }
 
+    // 获取已有的记录列表
     let records = [];
     try {
         const stored = localStorage.getItem('segment_records');
@@ -702,34 +810,68 @@ function saveRecord() {
         records = [];
     }
 
-    const record = {
-        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
-        time: new Date().toLocaleString('zh-CN'),
-        mode: currentMode,
-        dataset: currentResultData.dataset || 'unknown',
-        class_name: currentResultData.class_name || '',
-        confidence: currentResultData.confidence || null,
-        original_base64: currentResultData.images && currentResultData.images.original ? currentResultData.images.original : '',
-        predict_base64: currentResultData.images && currentResultData.images.segment ? currentResultData.images.segment : '',
-        gold_base64: currentResultData.images && currentResultData.images.gold_standard ? currentResultData.images.gold_standard : '',
-        result_image: currentResultData.result_image || '',
-        metrics: currentResultData.metrics || {},
-        original_name: currentResultData.original_name || '',
-        predict_name: currentResultData.predict_name || '',
-        gold_name: currentResultData.gold_name || '',
-        image_name: currentResultData.image_name || '',
-        slice_browser_api_data: sliceData ? {
-            patient_id: sliceData.patient_id,
-            dataset: sliceData.dataset,
-            total: sliceData.total,
-            slices: (sliceData.slices || []).map(function(s) {
-                return { slice_num: s.slice_num, filename: s.filename || '' };
-            })
-        } : null
-    };
+    // 构建新记录
+    let record;
+    if (currentMode === 'classify') {
+        // 分类模式记录 - 获取原始图的base64
+        let originalBase64 = '';
+        if (currentResultData.images && currentResultData.images.original) {
+            originalBase64 = currentResultData.images.original;
+        } else {
+            // 从预览图获取base64（去掉 data:image/xxx;base64, 前缀）
+            const previewImg = document.getElementById('previewImg');
+            if (previewImg && previewImg.src && previewImg.src.startsWith('data:')) {
+                originalBase64 = previewImg.src.split(',')[1];
+            }
+        }
 
+        record = {
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+            time: new Date().toLocaleString('zh-CN'),
+            mode: 'classify',
+            dataset: currentResultData.dataset || 'unknown',
+            original_base64: originalBase64,
+            result_base64: currentResultData.images && currentResultData.images.result ? currentResultData.images.result : '',
+            class_name: currentResultData.class_name || '',
+            image_name: currentResultData.image_name || '',
+            metrics: {},
+            original_name: currentResultData.image_name || selectedFile.name || '',
+            predict_name: '',
+            gold_name: '',
+            slice_browser_api_data: null,
+            ai_analysis: ''  // 预留AI分析内容字段
+        };
+    } else {
+        // 分割模式记录
+        record = {
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+            time: new Date().toLocaleString('zh-CN'),
+            mode: 'segment',
+            dataset: currentResultData.dataset || 'unknown',
+            original_base64: currentResultData.images && currentResultData.images.original ? currentResultData.images.original : '',
+            predict_base64: currentResultData.images && currentResultData.images.segment ? currentResultData.images.segment : '',
+            gold_base64: currentResultData.images && currentResultData.images.gold_standard ? currentResultData.images.gold_standard : '',
+            metrics: currentResultData.metrics || {},
+            original_name: currentResultData.original_name || '',
+            predict_name: currentResultData.predict_name || '',
+            gold_name: currentResultData.gold_name || '',
+            // 切片浏览器API数据
+            slice_browser_api_data: sliceData ? {
+                patient_id: sliceData.patient_id,
+                dataset: sliceData.dataset,
+                total: sliceData.total,
+                slices: (sliceData.slices || []).map(function(s) {
+                    return { slice_num: s.slice_num, filename: s.filename || '' };
+                })
+            } : null,
+            ai_analysis: ''  // 预留AI分析内容字段
+        };
+    }
+
+    // 添加到列表头部（最新的在前）
     records.unshift(record);
 
+    // 保存到 localStorage
     try {
         localStorage.setItem('segment_records', JSON.stringify(records));
     } catch (e) {
@@ -737,6 +879,7 @@ function saveRecord() {
         return;
     }
 
+    // 更新保存按钮状态
     const saveBtn = document.getElementById('saveRecordBtn');
     saveBtn.innerHTML = '<i class="fas fa-check"></i> 已保存';
     saveBtn.style.background = '#22c55e';
@@ -747,11 +890,13 @@ function saveRecord() {
         saveBtn.style.borderColor = '';
     }, 2000);
 
+    // 刷新记录列表
     renderRecordsList();
 
     alert('记录已保存成功！');
 }
 
+// ========== 渲染记录列表 ==========
 function renderRecordsList() {
     let records = [];
     try {
@@ -780,38 +925,39 @@ function renderRecordsList() {
 
     let html = '';
     records.forEach(function(record) {
-        const dice = record.metrics && record.metrics.dice ? record.metrics.dice : '-';
-        const modeText = record.mode === 'classify' ? '分类' : '分割';
-        const modeColor = record.mode === 'classify' ? '#0ea5e9' : '#8b5cf6';
-        html += `
-            <div class="record-card" onclick="openRecordDetail('${record.id}')">
-                <div class="record-header">
-                    <div class="record-info">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="padding: 2px 8px; background: ${modeColor}; color: white; border-radius: 4px; font-size: 12px;">${modeText}</span>
-                            <span class="record-time">${record.time}</span>
-                        </div>
-                        ${record.class_name ? `<div style="color: var(--text-secondary); font-size: 14px; margin-top: 4px;">分类: ${record.class_name} ${record.confidence ? '(' + (record.confidence * 100).toFixed(1) + '%)' : ''}</div>` : ''}
-                        <div style="color: var(--text-muted); font-size: 13px; margin-top: 2px;">数据集: ${record.dataset.toUpperCase()}</div>
-                    </div>
-                    <div class="record-dice">
-                        <div style="font-size: 12px; color: var(--text-muted);">Dice</div>
-                        <div style="font-size: 20px; font-weight: 700; color: ${typeof dice === 'number' && dice >= 0.8 ? '#22c55e' : typeof dice === 'number' && dice >= 0.6 ? '#eab308' : '#ef4444'};">${typeof dice === 'number' ? dice.toFixed(4) : dice}</div>
-                    </div>
-                </div>
-                <div class="record-images">
-                    ${record.original_base64 ? `<img src="data:image/png;base64,${record.original_base64}" alt="原始图像" class="record-thumb">` : ''}
-                    ${record.predict_base64 ? `<img src="data:image/png;base64,${record.predict_base64}" alt="预测图像" class="record-thumb">` : ''}
-                    ${record.gold_base64 ? `<img src="data:image/png;base64,${record.gold_base64}" alt="金标准" class="record-thumb">` : ''}
-                </div>
-            </div>
-        `;
+        const datasetLabel = record.dataset ? record.dataset.toUpperCase() : '未知';
+        const diceValue = record.metrics && record.metrics.dice ? formatMetric(record.metrics.dice) : '-';
+        const accuracyValue = record.metrics && record.metrics.accuracy ? formatMetric(record.metrics.accuracy) : '-';
+        const isClassify = record.mode === 'classify';
+        const modeLabel = isClassify ? '分类' : '分割';
+        const modeColor = isClassify ? '#0ea5e9' : '#6366f1';
+        const modeBg = isClassify ? 'rgba(14,165,233,0.1)' : 'rgba(99,102,241,0.1)';
+
+        html += '<div class="record-item" style="cursor: pointer;" onclick="showRecordDetail(\'' + record.id + '\')">';
+        html += '  <div class="record-icon" style="background: ' + modeBg + '; color: ' + modeColor + ';">';
+        html += '    <i class="fas fa-file-medical-alt"></i>';
+        html += '  </div>';
+        html += '  <div class="record-info">';
+        html += '    <div class="record-title">' + escapeHtml(record.original_name || (isClassify ? '分类检测' : '分割检测')) + '</div>';
+        html += '    <div class="record-meta">' + escapeHtml(record.time) + '</div>';
+        html += '  </div>';
+        html += '  <div style="display: flex; gap: 8px; align-items: center;">';
+        html += '    <span style="padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: ' + modeBg + '; color: ' + modeColor + ';">' + modeLabel + '</span>';
+        html += '    <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); showRecordDetail(\'' + record.id + '\')">查看详情</button>';
+        html += '    <button class="btn btn-sm" style="background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.2);" onclick="event.stopPropagation(); deleteRecord(\'' + record.id + '\')">';
+        html += '      <i class="fas fa-trash-alt"></i>';
+        html += '    </button>';
+        html += '  </div>';
+        html += '</div>';
     });
 
     listContainer.innerHTML = html;
 }
 
-function openRecordDetail(recordId) {
+// ========== 删除记录 ==========
+function deleteRecord(id) {
+    if (!confirm('确定要删除这条记录吗？')) return;
+
     let records = [];
     try {
         const stored = localStorage.getItem('segment_records');
@@ -822,71 +968,841 @@ function openRecordDetail(recordId) {
         records = [];
     }
 
-    const record = records.find(function(r) { return r.id === recordId; });
-    if (!record) return;
+    records = records.filter(function(r) { return r.id !== id; });
 
-    document.getElementById('recordDetailTitle').textContent = '检测记录详情';
-    
-    let metaHtml = `
-        <div style="display: flex; flex-wrap: wrap; gap: 16px;">
-            <div><strong style="color: #0369a1;">检测时间：</strong>${record.time}</div>
-            <div><strong style="color: #0369a1;">检测模式：</strong>${record.mode === 'classify' ? '分类' : '分割'}</div>
-            <div><strong style="color: #0369a1;">数据集：</strong>${record.dataset.toUpperCase()}</div>
-            ${record.class_name ? `<div><strong style="color: #0369a1;">分类结果：</strong>${record.class_name}</div>` : ''}
-            ${record.confidence ? `<div><strong style="color: #0369a1;">置信度：</strong>${(record.confidence * 100).toFixed(2)}%</div>` : ''}
-        </div>
-    `;
-    document.getElementById('recordDetailMeta').innerHTML = metaHtml;
+    try {
+        localStorage.setItem('segment_records', JSON.stringify(records));
+    } catch (e) {
+        alert('删除失败');
+        return;
+    }
 
-    document.getElementById('detail-original').src = record.original_base64 ? 'data:image/png;base64,' + record.original_base64 : '';
-    document.getElementById('detail-segment').src = record.predict_base64 ? 'data:image/png;base64,' + record.predict_base64 : '';
-    document.getElementById('detail-gold').src = record.gold_base64 ? 'data:image/png;base64,' + record.gold_base64 : '';
-
-    let metricsHtml = '';
-    const metrics = record.metrics || {};
-    const metricNames = ['accuracy', 'dice', 'iou', 'hd95', 'precision', 'recall'];
-    const metricLabels = ['Accuracy', 'Dice', 'IoU', 'HD95', 'Precision', 'Recall'];
-    metricNames.forEach(function(name, index) {
-        metricsHtml += `
-            <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">${metricLabels[index]}</div>
-                <div style="font-size: 18px; font-weight: 700; color: #1e293b;">${formatMetric(metrics[name])}</div>
-            </div>
-        `;
-    });
-    document.getElementById('detail-metrics').innerHTML = metricsHtml;
-
-    document.getElementById('recordDetailModal').style.display = 'block';
+    renderRecordsList();
 }
 
+// ========== 显示记录详情弹窗 ==========
+function showRecordDetail(id) {
+    let records = [];
+    try {
+        const stored = localStorage.getItem('segment_records');
+        if (stored) {
+            records = JSON.parse(stored);
+        }
+    } catch (e) {
+        records = [];
+    }
+
+    const record = records.find(function(r) { return r.id === id; });
+    if (!record) {
+        alert('记录不存在');
+        return;
+    }
+
+    // 设置标题
+    const isClassifyDetail = record.mode === 'classify';
+    document.getElementById('recordDetailTitle').textContent = '检测记录详情 - ' + (record.original_name || (isClassifyDetail ? '分类检测' : '分割检测'));
+
+    // 设置元信息
+    const metaDiv = document.getElementById('recordDetailMeta');
+    let metaHtml = '<div style="font-weight: 600; color: #0369a1; margin-bottom: 8px; font-size: 14px;"><i class="fas fa-file-alt" style="margin-right: 6px;"></i>记录信息</div>';
+    metaHtml += '<div style="font-size: 13px; color: #334155; line-height: 1.8;">';
+    metaHtml += '<div><strong>检测时间：</strong>' + escapeHtml(record.time) + '</div>';
+    metaHtml += '<div><strong>检测模式：</strong>' + (isClassifyDetail ? '图像分类' : '图像分割') + '</div>';
+    metaHtml += '<div><strong>数据集：</strong>' + escapeHtml(record.dataset ? record.dataset.toUpperCase() : '未知') + '</div>';
+    if (record.original_name) metaHtml += '<div><strong>原图名称：</strong>' + escapeHtml(record.original_name) + '</div>';
+    if (record.predict_name) metaHtml += '<div><strong>预测图名称：</strong>' + escapeHtml(record.predict_name) + '</div>';
+    if (record.gold_name) metaHtml += '<div><strong>金标准名称：</strong>' + escapeHtml(record.gold_name) + '</div>';
+    metaHtml += '</div>';
+    metaDiv.innerHTML = metaHtml;
+
+    // 根据模式显示/隐藏对应区域
+    const classifyArea = document.getElementById('classification-detail-area');
+    const segmentArea = document.getElementById('segmentation-detail-area');
+
+    if (isClassifyDetail) {
+        // 分类模式：显示分类区域，隐藏分割区域
+        classifyArea.style.display = 'block';
+        segmentArea.style.display = 'none';
+
+        // 设置原始图像
+        if (record.original_base64) {
+            document.getElementById('detail-original').src = 'data:image/png;base64,' + record.original_base64;
+        } else {
+            document.getElementById('detail-original').src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect fill="%23f1f5f9" width="200" height="200"/><text fill="%2394a3b8" x="50%" y="50%" text-anchor="middle" dy=".3em">无数据</text></svg>';
+        }
+
+        // 设置分类结果
+        document.getElementById('cls-detail-class-name').textContent = record.class_name || '-';
+    } else {
+        // 分割模式：隐藏分类区域，显示分割区域
+        classifyArea.style.display = 'none';
+        segmentArea.style.display = 'block';
+
+        // 设置图片
+        if (record.original_base64) {
+            document.getElementById('detail-original-seg').src = 'data:image/png;base64,' + record.original_base64;
+        } else {
+            document.getElementById('detail-original-seg').src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect fill="%23f1f5f9" width="200" height="200"/><text fill="%2394a3b8" x="50%" y="50%" text-anchor="middle" dy=".3em">无数据</text></svg>';
+        }
+        if (record.predict_base64) {
+            document.getElementById('detail-segment').src = 'data:image/png;base64,' + record.predict_base64;
+        } else {
+            document.getElementById('detail-segment').src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect fill="%23f1f5f9" width="200" height="200"/><text fill="%2394a3b8" x="50%" y="50%" text-anchor="middle" dy=".3em">无数据</text></svg>';
+        }
+        if (record.gold_base64) {
+            document.getElementById('detail-gold').src = 'data:image/png;base64,' + record.gold_base64;
+        } else {
+            document.getElementById('detail-gold').src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect fill="%23f1f5f9" width="200" height="200"/><text fill="%2394a3b8" x="50%" y="50%" text-anchor="middle" dy=".3em">无金标准</text></svg>';
+        }
+
+        // 设置指标
+        const metricsDiv = document.getElementById('detail-metrics');
+        const metrics = record.metrics || {};
+        const metricLabels = ['accuracy', 'dice_kidney', 'iou_kidney', 'hd95_kidney'];
+        const metricNames = ['Accuracy', 'Dice_Kidney', 'IoU_Kidney', 'HD95_Kidney'];
+        let metricsHtml = '';
+        for (let i = 0; i < metricLabels.length; i++) {
+            const val = metrics[metricLabels[i]];
+            metricsHtml += '<div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">';
+            metricsHtml += '  <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">' + metricNames[i] + '</div>';
+            metricsHtml += '  <div style="font-size: 18px; font-weight: 700; color: #1e293b;">' + formatMetric(val) + '</div>';
+            metricsHtml += '</div>';
+        }
+        metricsDiv.innerHTML = metricsHtml;
+
+        // 设置切片浏览器
+        renderDetailSliceBrowser(record);
+    }
+
+    // 重置AI分析区域
+    currentAnalysisRecord = record;
+    document.getElementById('btn-ai-analysis').disabled = false;
+    document.getElementById('ai-analysis-loading').style.display = 'none';
+    document.getElementById('ai-analysis-result').innerHTML = '';
+
+    // 如果记录中已有AI分析内容，则直接显示
+    if (record.ai_analysis && record.ai_analysis.trim() !== '') {
+        document.getElementById('btn-ai-analysis').innerHTML = '<i class="fas fa-magic"></i> 重新分析';
+        document.getElementById('ai-analysis-result').style.display = 'block';
+        document.getElementById('ai-analysis-result').innerHTML = renderAIAnalysisContent(record.ai_analysis);
+        document.getElementById('ai-analysis-empty').style.display = 'none';
+    } else {
+        document.getElementById('btn-ai-analysis').innerHTML = '<i class="fas fa-magic"></i> 生成AI分析';
+        document.getElementById('ai-analysis-result').style.display = 'none';
+        document.getElementById('ai-analysis-empty').style.display = 'block';
+        document.getElementById('ai-analysis-empty').innerHTML = '<i class="fas fa-robot" style="font-size: 28px; margin-bottom: 8px; display: block; color: #0ea5e9;"></i>点击上方按钮，AI将为您生成专业的检测结果分析报告';
+    }
+
+    // 显示弹窗
+    document.getElementById('recordDetailModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+// 关闭记录详情弹窗
 function closeRecordDetailModal() {
     document.getElementById('recordDetailModal').style.display = 'none';
+    document.body.style.overflow = '';
+    stopDetailSlicePlay();
 }
 
+// ========== AI智能分析功能 ==========
+let currentAnalysisRecord = null;
+
+function generateAIAnalysis() {
+    if (!currentAnalysisRecord) {
+        alert('请先选择检测记录');
+        return;
+    }
+
+    const btn = document.getElementById('btn-ai-analysis');
+    const loading = document.getElementById('ai-analysis-loading');
+    const resultDiv = document.getElementById('ai-analysis-result');
+    const emptyDiv = document.getElementById('ai-analysis-empty');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
+    emptyDiv.style.display = 'none';
+    resultDiv.style.display = 'none';
+    loading.style.display = 'block';
+
+    fetch('/api/record-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ record: currentAnalysisRecord })
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        loading.style.display = 'none';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic"></i> 重新分析';
+
+        if (data.success) {
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = renderAIAnalysisContent(data.response);
+
+            // 将AI分析结果保存到当前记录中
+            if (currentAnalysisRecord) {
+                currentAnalysisRecord.ai_analysis = data.response;
+                // 更新localStorage中的记录
+                let records = [];
+                try {
+                    const stored = localStorage.getItem('segment_records');
+                    if (stored) records = JSON.parse(stored);
+                } catch (e) {}
+                const idx = records.findIndex(function(r) { return r.id === currentAnalysisRecord.id; });
+                if (idx >= 0) {
+                    records[idx].ai_analysis = data.response;
+                    try {
+                        localStorage.setItem('segment_records', JSON.stringify(records));
+                    } catch (e) {}
+                }
+            }
+        } else {
+            emptyDiv.style.display = 'block';
+            emptyDiv.innerHTML = '<i class="fas fa-exclamation-circle" style="font-size: 28px; margin-bottom: 8px; display: block; color: #ef4444;"></i>分析失败：' + escapeHtml(data.error || '未知错误');
+        }
+    })
+    .catch(function(error) {
+        loading.style.display = 'none';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic"></i> 生成AI分析';
+        emptyDiv.style.display = 'block';
+        emptyDiv.innerHTML = '<i class="fas fa-exclamation-circle" style="font-size: 28px; margin-bottom: 8px; display: block; color: #ef4444;"></i>请求失败：' + escapeHtml(error.message);
+    });
+}
+
+function renderAIAnalysisContent(text) {
+    // 将AI返回的纯文本转换为富HTML，增强排版和视觉效果
+
+    // 标题图标映射
+    const titleIcons = {
+        '影像概述': '🔍',
+        '病灶可能性评估': '⚠️',
+        '影像特征描述': '📋',
+        '临床意义分析': '💡',
+        '鉴别诊断建议': '🏥',
+        '患者生活建议': '🌿',
+        '后续医疗建议': '📅',
+        '重要提示': '⚡',
+        '相关医学知识科普': '📚',
+        '检测结果概述': '📊',
+        '有无病灶分析': '🔎',
+        '病灶/病变特征分析': '📐',
+        '分割/分类质量评估': '📈',
+        '临床意义解读': '💊',
+        '对患者的生活建议': '🥗',
+        '后续检查建议': '📋',
+        '风险提示': '⛔',
+        '相关知识科普': '📖'
+    };
+
+    // 获取标题对应的图标
+    function getIconForTitle(title) {
+        for (let key in titleIcons) {
+            if (title.includes(key)) return titleIcons[key];
+        }
+        return '📌';
+    }
+
+    let html = '<div style="line-height: 1.8; color: #334155; font-size: 13px;">';
+
+    // 按段落分割处理
+    const lines = text.split('\n');
+    let inList = false;
+    let listHtml = '';
+
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+        let trimmed = line.trim();
+
+        if (!trimmed) {
+            if (inList) {
+                html += listHtml + '</div>';
+                listHtml = '';
+                inList = false;
+            }
+            continue;
+        }
+
+        // 处理一级/二级标题（带数字编号的标题如 "1. 影像概述"）
+        if (/^\d+\.\s+/.test(trimmed) && trimmed.length < 30) {
+            if (inList) {
+                html += listHtml + '</div>';
+                listHtml = '';
+                inList = false;
+            }
+            let titleText = trimmed.replace(/^\d+\.\s+/, '');
+            let icon = getIconForTitle(titleText);
+            html += '<div style="margin: 20px 0 10px 0; padding: 10px 14px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 10px; border-left: 4px solid #0ea5e9;">';
+            html += '<div style="font-size: 15px; font-weight: 700; color: #0369a1;">' + icon + ' ' + escapeHtml(titleText) + '</div>';
+            html += '</div>';
+            continue;
+        }
+
+        // 处理加粗标题行（如 **影像概述** 或 影像概述 后面跟着内容）
+        if (/^\*\*(.+?)\*\*$/.test(trimmed) && trimmed.length < 40) {
+            if (inList) {
+                html += listHtml + '</div>';
+                listHtml = '';
+                inList = false;
+            }
+            let titleText = trimmed.replace(/^\*\*/, '').replace(/\*\*$/, '');
+            let icon = getIconForTitle(titleText);
+            html += '<div style="margin: 20px 0 10px 0; padding: 10px 14px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 10px; border-left: 4px solid #0ea5e9;">';
+            html += '<div style="font-size: 15px; font-weight: 700; color: #0369a1;">' + icon + ' ' + escapeHtml(titleText) + '</div>';
+            html += '</div>';
+            continue;
+        }
+
+        // 处理分隔线
+        if (/^---+/.test(trimmed)) {
+            if (inList) {
+                html += listHtml + '</div>';
+                listHtml = '';
+                inList = false;
+            }
+            html += '<div style="margin: 12px 0; text-align: center; color: #cbd5e1;">✦ ✦ ✦</div>';
+            continue;
+        }
+
+        // 处理列表项（以 - 或 * 开头）
+        if (/^\s*[-*]\s+/.test(line)) {
+            if (!inList) {
+                inList = true;
+                listHtml = '<div style="margin: 8px 0; padding: 8px 12px; background: #f8fafc; border-radius: 8px;">';
+            }
+            let content = trimmed.replace(/^\s*[-*]\s+/, '');
+            // 处理加粗
+            content = content.replace(/\*\*(.+?)\*\*/g, function(m, c) {
+                return '<strong style="color: #0369a1;">' + escapeHtml(c) + '</strong>';
+            });
+            listHtml += '<div style="margin: 6px 0 6px 20px; position: relative; color: #475569;"><span style="position: absolute; left: -16px; color: #0ea5e9; font-size: 14px;">▸</span>' + content + '</div>';
+            continue;
+        }
+
+        // 处理数字列表
+        if (/^\s*\d+\.\s+/.test(line) && trimmed.length >= 30) {
+            if (!inList) {
+                inList = true;
+                listHtml = '<div style="margin: 8px 0; padding: 8px 12px; background: #f8fafc; border-radius: 8px;">';
+            }
+            let num = trimmed.match(/^\s*(\d+)\./)[1];
+            let content = trimmed.replace(/^\s*\d+\.\s+/, '');
+            // 处理加粗
+            content = content.replace(/\*\*(.+?)\*\*/g, function(m, c) {
+                return '<strong style="color: #0369a1;">' + escapeHtml(c) + '</strong>';
+            });
+            listHtml += '<div style="margin: 6px 0 6px 24px; position: relative; color: #475569;"><span style="position: absolute; left: -22px; color: #0ea5e9; font-weight: 700; font-size: 13px;">' + num + '.</span>' + content + '</div>';
+            continue;
+        }
+
+        // 普通段落
+        if (inList) {
+            html += listHtml + '</div>';
+            listHtml = '';
+            inList = false;
+        }
+
+        // 处理段落中的加粗
+        let para = trimmed;
+        para = para.replace(/\*\*(.+?)\*\*/g, function(m, c) {
+            return '<strong style="color: #0369a1;">' + escapeHtml(c) + '</strong>';
+        });
+
+        // 处理关键短语的高亮（如"建议"、"注意"、"重要"等）
+        para = para.replace(/(建议|注意|重要|提示|警告|必须|务必)/g, function(m) {
+            return '<span style="color: #dc2626; font-weight: 600;">' + m + '</span>';
+        });
+
+        html += '<p style="margin: 10px 0; text-align: justify;">' + para + '</p>';
+    }
+
+    // 结束未关闭的列表
+    if (inList) {
+        html += listHtml + '</div>';
+    }
+
+    html += '</div>';
+    return html;
+}
+
+// ========== 导出PDF功能 ==========
+function exportRecordPDF() {
+    if (!currentAnalysisRecord) {
+        alert('暂无记录数据可导出');
+        return;
+    }
+
+    // 检查是否有AI分析结果
+    const aiResultDiv = document.getElementById('ai-analysis-result');
+    const hasAIAnalysis = aiResultDiv.style.display !== 'none' && aiResultDiv.innerHTML.trim() !== '';
+
+    if (!hasAIAnalysis) {
+        if (!confirm('尚未生成AI分析报告，导出的PDF将不包含AI分析部分。是否继续导出？')) {
+            return;
+        }
+    }
+
+    // 显示加载提示
+    const btn = document.querySelector('[onclick="exportRecordPDF()"]');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在生成PDF...';
+
+    // 获取记录数据
+    const record = currentAnalysisRecord;
+    const isClassify = record.mode === 'classify';
+    const dataset = (record.dataset || 'unknown').toUpperCase();
+
+    // 获取图片数据 - 使用当前页面中显示的图片src
+    let imagesHtml = '';
+
+    if (isClassify) {
+        // 分类模式：只显示原始图像
+        const originalImg = document.getElementById('detail-original');
+        const originalSrc = originalImg && originalImg.src ? originalImg.src : '';
+        if (originalSrc && !originalSrc.includes('无数据')) {
+            imagesHtml += '<div class="image-box"><div class="image-label">原始图像</div><img src="' + originalSrc + '" crossorigin="anonymous" /></div>';
+        }
+    } else {
+        // 分割模式：显示三张图
+        const originalImg = document.getElementById('detail-original-seg');
+        const segmentImg = document.getElementById('detail-segment');
+        const goldImg = document.getElementById('detail-gold');
+
+        const originalSrc = originalImg && originalImg.src ? originalImg.src : '';
+        const segmentSrc = segmentImg && segmentImg.src ? segmentImg.src : '';
+        const goldSrc = goldImg && goldImg.src ? goldImg.src : '';
+
+        if (originalSrc && !originalSrc.includes('无数据')) {
+            imagesHtml += '<div class="image-box"><div class="image-label">原始图像</div><img src="' + originalSrc + '" crossorigin="anonymous" /></div>';
+        }
+        if (segmentSrc && !segmentSrc.includes('无数据') && !segmentSrc.includes('无结果图')) {
+            imagesHtml += '<div class="image-box"><div class="image-label">预测结果</div><img src="' + segmentSrc + '" crossorigin="anonymous" /></div>';
+        }
+        if (goldSrc && !goldSrc.includes('无数据') && !goldSrc.includes('无金标准')) {
+            imagesHtml += '<div class="image-box"><div class="image-label">金标准标注</div><img src="' + goldSrc + '" crossorigin="anonymous" /></div>';
+        }
+    }
+
+    // 获取指标数据
+    let metricsHtml = '';
+    if (isClassify) {
+        metricsHtml = '<div class="metric-item"><span class="metric-name">分类类别</span><span class="metric-value" style="color: #16a34a;">' + escapeHtml(record.class_name || '-') + '</span></div>';
+    } else {
+        const metrics = record.metrics || {};
+        const metricLabels = ['accuracy', 'dice_kidney', 'iou_kidney', 'hd95_kidney'];
+        const metricNames = ['Accuracy', 'Dice_Kidney', 'IoU_Kidney', 'HD95_Kidney'];
+        for (let i = 0; i < metricLabels.length; i++) {
+            const val = metrics[metricLabels[i]];
+            if (val !== undefined && val !== null) {
+                metricsHtml += '<div class="metric-item"><span class="metric-name">' + metricNames[i] + '</span><span class="metric-value">' + formatMetric(val) + '</span></div>';
+            }
+        }
+    }
+
+    // 获取AI分析内容
+    let aiAnalysisHtml = '';
+    if (hasAIAnalysis) {
+        aiAnalysisHtml = aiResultDiv.innerHTML;
+    } else {
+        aiAnalysisHtml = '<p style="color: #94a3b8; text-align: center; padding: 20px;">未生成AI分析报告</p>';
+    }
+
+    // 生成文件名
+    const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const fileName = '医学影像检测报告_' + (record.original_name || 'report').replace(/\.[^.]+$/, '') + '_' + timestamp + '.pdf';
+
+    // 构建PDF HTML
+    const pdfHtml = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>医学影像检测报告</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #334155;
+            width: 794px;
+            padding: 40px;
+            background: white;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #0ea5e9;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #0369a1;
+            font-size: 22px;
+            margin: 0 0 8px 0;
+        }
+        .header .subtitle {
+            color: #64748b;
+            font-size: 12px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0369a1;
+            background: #f0f9ff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border-left: 4px solid #0ea5e9;
+            margin-bottom: 12px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 20px;
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 8px;
+        }
+        .info-item { display: flex; }
+        .info-label { color: #64748b; min-width: 80px; }
+        .info-value { color: #1e293b; font-weight: 500; }
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .image-box {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            text-align: center;
+        }
+        .image-label {
+            background: #f1f5f9;
+            padding: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+        }
+        .image-box img {
+            width: 100%;
+            height: 160px;
+            object-fit: contain;
+            display: block;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .metric-item {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+        .metric-name {
+            font-size: 11px;
+            color: #64748b;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .metric-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+        .ai-analysis {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 15px;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 11px;
+        }
+        .warning-box {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-top: 15px;
+            color: #92400e;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>医学影像检测报告</h1>
+        <div class="subtitle">报告生成时间：${new Date().toLocaleString('zh-CN')}</div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">📋 检测基本信息</div>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">检测时间：</span>
+                <span class="info-value">${escapeHtml(record.time || '未知')}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">检测模式：</span>
+                <span class="info-value">${isClassify ? '图像分类' : '图像分割'}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">数据集：</span>
+                <span class="info-value">${dataset}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">原图名称：</span>
+                <span class="info-value">${escapeHtml(record.original_name || '未知')}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">🖼️ 影像图像</div>
+        <div class="images-grid">
+            ${imagesHtml}
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">📊 ${isClassify ? '分类结果' : '分割质量指标'}</div>
+        <div class="metrics-grid">
+            ${metricsHtml}
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">🤖 AI智能分析报告</div>
+        <div class="ai-analysis">
+            ${aiAnalysisHtml}
+        </div>
+    </div>
+
+    <div class="warning-box">
+        <strong>⚠️ 重要声明：</strong>本报告由AI辅助分析生成，仅供参考，不能替代专业医生的诊断意见。请携带完整影像资料咨询专业医生，以获取准确的诊断和治疗建议。
+    </div>
+
+    <div class="footer">
+        <p>本报告由医学影像智能检测平台自动生成</p>
+        <p>报告编号：${escapeHtml(record.id || 'N/A')} | 生成时间：${new Date().toLocaleString('zh-CN')}</p>
+    </div>
+</body>
+</html>`;
+
+    // 使用隐藏iframe加载内容，然后通过print下载PDF
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.left = '-9999px';
+    iframe.style.top = '-9999px';
+    iframe.style.width = '794px';
+    iframe.style.height = '1123px';
+    document.body.appendChild(iframe);
+
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    iframeDoc.open();
+    iframeDoc.write(pdfHtml);
+    iframeDoc.close();
+
+    // 等待图片加载完成后触发打印
+    const images = iframeDoc.querySelectorAll('img');
+    let loadedCount = 0;
+    const totalImages = images.length;
+
+    function triggerDownload() {
+        setTimeout(function() {
+            try {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            } catch(e) {
+                // fallback: 打开新窗口
+                const printWindow = window.open('', '_blank');
+                if (printWindow) {
+                    printWindow.document.write(pdfHtml);
+                    printWindow.document.close();
+                    printWindow.print();
+                }
+            }
+            // 恢复按钮
+            setTimeout(function() {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                document.body.removeChild(iframe);
+            }, 1000);
+        }, 500);
+    }
+
+    if (totalImages === 0) {
+        triggerDownload();
+    } else {
+        for (let i = 0; i < totalImages; i++) {
+            if (images[i].complete) {
+                loadedCount++;
+                if (loadedCount === totalImages) triggerDownload();
+            } else {
+                images[i].onload = function() {
+                    loadedCount++;
+                    if (loadedCount === totalImages) triggerDownload();
+                };
+                images[i].onerror = function() {
+                    loadedCount++;
+                    if (loadedCount === totalImages) triggerDownload();
+                };
+            }
+        }
+    }
+}
+
+// ========== 记录详情弹窗中的切片浏览器 ==========
+let detailSliceApiData = null;
+let detailSliceIndex = 0;
+let detailSlicePlayTimer = null;
+let detailSliceIsPlaying = false;
+
+function renderDetailSliceBrowser(record) {
+    detailSliceApiData = record.slice_browser_api_data || null;
+    detailSliceIndex = 0;
+
+    const viewer = document.getElementById('detail-slice-browser-viewer');
+    const empty = document.getElementById('detail-slice-browser-empty');
+    const slider = document.getElementById('detail-slice-slider');
+    const meta = document.getElementById('detail-slice-browser-meta');
+
+    const count = detailSliceApiData ? (detailSliceApiData.slices || []).length : 0;
+
+    if (count === 0) {
+        viewer.style.display = 'none';
+        empty.style.display = 'block';
+        meta.textContent = '';
+        return;
+    }
+
+    viewer.style.display = 'block';
+    empty.style.display = 'none';
+
+    slider.max = count - 1;
+    slider.value = 0;
+
+    meta.textContent = '患者 ' + detailSliceApiData.patient_id + ' | 共 ' + detailSliceApiData.total + ' 张切片 | 数据集: ' + detailSliceApiData.dataset.toUpperCase();
+
+    updateDetailSliceDisplay();
+}
+
+function updateDetailSliceDisplay() {
+    if (!detailSliceApiData || !detailSliceApiData.slices || detailSliceApiData.slices.length === 0) return;
+
+    const slice = detailSliceApiData.slices[detailSliceIndex];
+    const patientId = detailSliceApiData.patient_id;
+    const dataset = detailSliceApiData.dataset;
+    const count = detailSliceApiData.slices.length;
+
+    document.getElementById('detail-slice-orig').src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=original';
+    document.getElementById('detail-slice-seg').src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=prediction';
+    document.getElementById('detail-slice-slider').value = detailSliceIndex;
+    document.getElementById('detail-slice-info').textContent = '切片 ' + (detailSliceIndex + 1) + '/' + count + ' (' + (slice.filename || '') + ')';
+    document.getElementById('detail-slice-browser-meta').textContent = '患者 ' + patientId + ' | 切片 ' + (detailSliceIndex + 1) + '/' + detailSliceApiData.total + ' (' + (slice.filename || '') + ') | 数据集: ' + dataset.toUpperCase();
+}
+
+function navigateDetailSlice(direction) {
+    if (!detailSliceApiData || !detailSliceApiData.slices) return;
+    const count = detailSliceApiData.slices.length;
+    if (count === 0) return;
+
+    detailSliceIndex += direction;
+    if (detailSliceIndex < 0) detailSliceIndex = 0;
+    if (detailSliceIndex >= count) detailSliceIndex = count - 1;
+
+    updateDetailSliceDisplay();
+}
+
+function onDetailSliceSliderChange(value) {
+    detailSliceIndex = parseInt(value);
+    updateDetailSliceDisplay();
+}
+
+function toggleDetailSlicePlay() {
+    if (detailSliceIsPlaying) {
+        stopDetailSlicePlay();
+    } else {
+        startDetailSlicePlay();
+    }
+}
+
+function startDetailSlicePlay() {
+    if (!detailSliceApiData || !detailSliceApiData.slices) return;
+    const count = detailSliceApiData.slices.length;
+    if (count === 0) return;
+
+    detailSliceIsPlaying = true;
+    document.getElementById('detail-slice-play-icon').className = 'fas fa-pause';
+    document.getElementById('detail-slice-play-text').textContent = '暂停';
+
+    const speed = parseInt(document.getElementById('detail-slice-speed').value) || 1000;
+
+    detailSlicePlayTimer = setInterval(function() {
+        detailSliceIndex++;
+        if (detailSliceIndex >= count) detailSliceIndex = 0;
+        updateDetailSliceDisplay();
+    }, speed);
+}
+
+function stopDetailSlicePlay() {
+    detailSliceIsPlaying = false;
+    document.getElementById('detail-slice-play-icon').className = 'fas fa-play';
+    document.getElementById('detail-slice-play-text').textContent = '自动播放';
+
+    if (detailSlicePlayTimer) {
+        clearInterval(detailSlicePlayTimer);
+        detailSlicePlayTimer = null;
+    }
+}
+
+function changeDetailSliceSpeed(value) {
+    if (detailSliceIsPlaying) {
+        stopDetailSlicePlay();
+        startDetailSlicePlay();
+    }
+}
+
+// ========== 图片放大预览 ==========
 function openImagePreview(imgId) {
     const img = document.getElementById(imgId);
-    if (img && img.src) {
-        document.getElementById('overlayPreviewImg').src = img.src;
-        document.getElementById('imagePreviewOverlay').style.display = 'flex';
-    }
+    if (!img || !img.src) return;
+    const overlay = document.getElementById('imagePreviewOverlay');
+    const overlayImg = document.getElementById('overlayPreviewImg');
+    overlayImg.src = img.src;
+    overlay.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
 }
 
 function closeImagePreview() {
     document.getElementById('imagePreviewOverlay').style.display = 'none';
+    document.body.style.overflow = '';
 }
 
-function showTrendAnalysis() {
-    document.getElementById('trendModal').style.display = 'block';
-    loadTrendRecords();
-}
+// ESC 关闭放大预览
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeImagePreview();
+        closeRecordDetailModal();
+    }
+});
 
-function closeTrendModal() {
-    document.getElementById('trendModal').style.display = 'none';
-    document.getElementById('trendInputSection').style.display = 'block';
-    document.getElementById('trendResultSection').style.display = 'none';
-}
 
-function loadTrendRecords() {
+// ========== 趋势分析功能 ==========
+
+// 渲染历史趋势分析记录（卡片表格形式）
+function renderHistoryTrendRecords() {
     let records = [];
     try {
         const stored = localStorage.getItem('segment_records');
@@ -897,44 +1813,112 @@ function loadTrendRecords() {
         records = [];
     }
 
-    document.getElementById('historyTrendCount').textContent = '共 ' + records.length + ' 条记录';
+    const container = document.getElementById('historyTrendContent');
+    const countSpan = document.getElementById('historyTrendCount');
 
-    let html = '';
+    countSpan.textContent = '共 ' + records.length + ' 条记录';
+
     if (records.length === 0) {
-        html = '<p style="text-align: center; color: var(--text-muted); padding: 20px;">暂无记录</p>';
-    } else {
-        records.forEach(function(record) {
-            const dice = record.metrics && record.metrics.dice ? record.metrics.dice : '-';
-            html += `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #e2e8f0;">
-                    <div>
-                        <div style="font-weight: 500; color: var(--text-primary);">${record.time}</div>
-                        <div style="font-size: 13px; color: var(--text-muted);">数据集: ${record.dataset.toUpperCase()} | ${record.mode === 'classify' ? '分类' : '分割'}</div>
-                    </div>
-                    <div style="font-size: 16px; font-weight: 600; color: ${typeof dice === 'number' && dice >= 0.8 ? '#22c55e' : typeof dice === 'number' && dice >= 0.6 ? '#eab308' : '#ef4444'};">
-                        Dice: ${typeof dice === 'number' ? dice.toFixed(4) : dice}
-                    </div>
-                </div>
-            `;
-        });
+        container.innerHTML =
+            '<div class="history-empty-state">' +
+            '  <i class="fas fa-clipboard-list"></i>' +
+            '  <div class="history-empty-title">暂无历史检测记录</div>' +
+            '  <div class="history-empty-desc">完成检测并保存记录后，此处将展示您的历史分割指标趋势</div>' +
+            '</div>';
+        return;
     }
-    document.getElementById('historyTrendContent').innerHTML = html;
 
-    let recordsHtml = '';
-    records.forEach(function(record) {
-        recordsHtml += `
-            <label style="display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 8px; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
-                <input type="checkbox" class="trend-record-checkbox" data-record-id="${record.id}">
-                <div>
-                    <div style="font-weight: 500; color: var(--text-primary);">${record.time}</div>
-                    <div style="font-size: 12px; color: var(--text-muted);">${record.dataset.toUpperCase()} | ${record.mode === 'classify' ? '分类' : '分割'}</div>
-                </div>
-            </label>
-        `;
+    // 按时间倒序排列（最新的在前）
+    const sortedRecords = records.slice().sort(function(a, b) {
+        const timeA = a.time ? new Date(a.time.replace(/-/g, '/')) : new Date(0);
+        const timeB = b.time ? new Date(b.time.replace(/-/g, '/')) : new Date(0);
+        return timeB - timeA;
     });
-    document.getElementById('trendRecordsList').innerHTML = records.length === 0 ? '<p style="text-align: center; color: var(--text-muted); margin: 0; padding: 20px;">暂无检测记录</p>' : recordsHtml;
+
+    let html = '<div class="history-trend-table-wrapper">';
+    html += '<table class="history-trend-table">';
+    html += '<thead>';
+    html += '<tr>';
+    html += '<th>检测时间</th>';
+    html += '<th>数据集</th>';
+    html += '<th>原图名称</th>';
+    html += '<th>Accuracy</th>';
+    html += '<th>Dice</th>';
+    html += '<th>IoU</th>';
+    html += '<th>HD95</th>';
+    html += '<th>Precision</th>';
+    html += '<th>Recall</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody>';
+
+    sortedRecords.forEach(function(record) {
+        const datasetLabel = record.dataset ? record.dataset.toUpperCase() : '未知';
+        const datasetBadgeClass = record.dataset === 'kits19' ? 'dataset-kits19' : (record.dataset === 'lidc' ? 'dataset-lidc' : 'dataset-other');
+        const metrics = record.metrics || {};
+
+        html += '<tr>';
+        html += '<td class="td-time">' + escapeHtml(record.time || '-') + '</td>';
+        html += '<td><span class="dataset-badge ' + datasetBadgeClass + '">' + escapeHtml(datasetLabel) + '</span></td>';
+        html += '<td class="td-name" title="' + escapeHtml(record.original_name || '-') + '">' + escapeHtml(record.original_name || '-') + '</td>';
+        html += '<td class="td-metric">' + formatMetric(metrics.accuracy) + '</td>';
+        html += '<td class="td-metric">' + formatMetric(metrics.dice) + '</td>';
+        html += '<td class="td-metric">' + formatMetric(metrics.iou) + '</td>';
+        html += '<td class="td-metric">' + formatMetric(metrics.hd95) + '</td>';
+        html += '<td class="td-metric">' + formatMetric(metrics.precision) + '</td>';
+        html += '<td class="td-metric">' + formatMetric(metrics.recall) + '</td>';
+        html += '</tr>';
+    });
+
+    html += '</tbody>';
+    html += '</table>';
+    html += '</div>';
+
+    container.innerHTML = html;
 }
 
+// 渲染趋势分析弹窗中的记录列表（复选框形式）
+function renderTrendRecordsList() {
+    let records = [];
+    try {
+        const stored = localStorage.getItem('segment_records');
+        if (stored) {
+            records = JSON.parse(stored);
+        }
+    } catch (e) {
+        records = [];
+    }
+
+    const container = document.getElementById('trendRecordsList');
+
+    if (records.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-muted); margin: 0; padding: 20px;">' +
+            '<i class="fas fa-folder-open" style="display: block; font-size: 28px; margin-bottom: 8px; color: #cbd5e1;"></i>' +
+            '暂无检测记录，请先完成检测并保存记录</p>';
+        return;
+    }
+
+    let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+    records.forEach(function(record, index) {
+        const datasetLabel = record.dataset ? record.dataset.toUpperCase() : '未知';
+        const diceValue = record.metrics && record.metrics.dice ? formatMetric(record.metrics.dice) : '-';
+        const timeStr = record.time || '未知时间';
+
+        html += '<label style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: white; border-radius: 8px; cursor: pointer; transition: all 0.2s; border: 1px solid transparent;" ' +
+            'onmouseover="this.style.borderColor=\'#6366f1\';this.style.background=\'#f5f3ff\'" ' +
+            'onmouseout="this.style.borderColor=\'transparent\';this.style.background=\'white\'">';
+        html += '<input type="checkbox" class="trend-record-checkbox" value="' + index + '" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--primary);">';
+        html += '<div style="flex: 1;">';
+        html += '<div style="font-size: 14px; font-weight: 500; color: var(--text-primary);">' + escapeHtml(record.original_name || '分割检测') + '</div>';
+        html += '<div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">' + escapeHtml(timeStr) + ' · ' + datasetLabel + ' · Dice: ' + diceValue + '</div>';
+        html += '</div>';
+        html += '</label>';
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// 全选/取消全选记录
 function selectAllRecords(select) {
     const checkboxes = document.querySelectorAll('.trend-record-checkbox');
     checkboxes.forEach(function(cb) {
@@ -942,14 +1926,9 @@ function selectAllRecords(select) {
     });
 }
 
-async function analyzeTrend() {
+// 获取选中的记录数据
+function getSelectedRecords() {
     const checkboxes = document.querySelectorAll('.trend-record-checkbox:checked');
-    if (checkboxes.length === 0) {
-        alert('请至少选择一条记录');
-        return;
-    }
-
-    const selectedIds = Array.from(checkboxes).map(function(cb) { return cb.dataset.recordId; });
     let records = [];
     try {
         const stored = localStorage.getItem('segment_records');
@@ -960,8 +1939,40 @@ async function analyzeTrend() {
         records = [];
     }
 
-    const selectedRecords = records.filter(function(r) { return selectedIds.includes(r.id); });
-    const userInput = document.getElementById('healthDataInput').value;
+    const selected = [];
+    checkboxes.forEach(function(cb) {
+        const idx = parseInt(cb.value);
+        if (records[idx]) {
+            selected.push(records[idx]);
+        }
+    });
+    return selected;
+}
+
+// 显示趋势分析弹窗
+function showTrendAnalysis() {
+    document.getElementById('trendModal').style.display = 'flex';
+    document.getElementById('trendInputSection').style.display = 'block';
+    document.getElementById('trendResultSection').style.display = 'none';
+    document.getElementById('healthDataInput').value = '';
+    renderTrendRecordsList();
+    renderHistoryTrendRecords();
+}
+
+// 关闭趋势分析弹窗
+function closeTrendModal() {
+    document.getElementById('trendModal').style.display = 'none';
+}
+
+// 分析健康趋势
+async function analyzeTrend() {
+    const selectedRecords = getSelectedRecords();
+    const healthData = document.getElementById('healthDataInput').value.trim();
+
+    if (selectedRecords.length === 0 && !healthData) {
+        alert('请至少选择一条检测记录或输入补充描述');
+        return;
+    }
 
     document.getElementById('trendInputSection').style.display = 'none';
     document.getElementById('trendResultSection').style.display = 'block';
@@ -969,14 +1980,478 @@ async function analyzeTrend() {
     const messagesContainer = document.getElementById('trendMessages');
     messagesContainer.innerHTML = '';
 
-    const userMessage = {
-        role: 'user',
-        content: userInput || '请分析这些检测记录的健康趋势'
-    };
+    // 构建用户消息
+    let userMessage = '';
+    if (selectedRecords.length > 0) {
+        userMessage += '【检测记录数据】\n';
+        selectedRecords.forEach(function(record, idx) {
+            userMessage += '\n--- 记录 ' + (idx + 1) + ' ---\n';
+            userMessage += '检测时间：' + (record.time || '未知') + '\n';
+            userMessage += '数据集：' + (record.dataset ? record.dataset.toUpperCase() : '未知') + '\n';
+            userMessage += '原图名称：' + (record.original_name || '未知') + '\n';
+            if (record.metrics) {
+                userMessage += '分割指标：\n';
+                if (record.metrics.accuracy !== undefined) userMessage += '  - Accuracy: ' + formatMetric(record.metrics.accuracy) + '\n';
+                if (record.metrics.dice !== undefined) userMessage += '  - Dice: ' + formatMetric(record.metrics.dice) + '\n';
+                if (record.metrics.iou !== undefined) userMessage += '  - IoU: ' + formatMetric(record.metrics.iou) + '\n';
+                if (record.metrics.hd95 !== undefined) userMessage += '  - HD95: ' + formatMetric(record.metrics.hd95) + '\n';
+                if (record.metrics.precision !== undefined) userMessage += '  - Precision: ' + formatMetric(record.metrics.precision) + '\n';
+                if (record.metrics.recall !== undefined) userMessage += '  - Recall: ' + formatMetric(record.metrics.recall) + '\n';
+            }
+        });
+        userMessage += '\n';
+    }
+    if (healthData) {
+        userMessage += '【补充描述】\n' + healthData + '\n';
+    }
 
-    messagesContainer.innerHTML += `
-        <div class="chat-message user-message">
-            <div class="message-content">${escapeHtml(userMessage.content)}</div>
-        </div>
-    `;
+    addTrendMessage('user', '已选择 ' + selectedRecords.length + ' 条检测记录' + (healthData ? '，并补充了症状描述' : '') + '，请进行趋势分析。');
 
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'chat-message ai';
+    loadingDiv.innerHTML = '<div class="chat-avatar ai">AI</div><div class="chat-bubble">正在分析您的健康数据，请稍候...</div>';
+    messagesContainer.appendChild(loadingDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+    try {
+        const response = await fetch('/api/trend-analysis', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                records: selectedRecords,
+                description: healthData
+            })
+        });
+
+        const data = await response.json();
+        messagesContainer.removeChild(loadingDiv);
+
+        if (data.success) {
+            addTrendMessage('ai', data.response);
+        } else {
+            addTrendMessage('ai', '抱歉，分析过程中出现错误：' + data.error);
+        }
+    } catch (error) {
+        messagesContainer.removeChild(loadingDiv);
+        addTrendMessage('ai', '抱歉，网络连接失败，请稍后重试。');
+    }
+}
+
+// 添加消息到趋势分析聊天
+function addTrendMessage(role, content) {
+    const messagesContainer = document.getElementById('trendMessages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'chat-message ' + role;
+
+    if (role === 'user') {
+        messageDiv.innerHTML = '<div class="chat-avatar user-avatar-chat">我</div><div class="chat-bubble">' + escapeHtml(content) + '</div>';
+    } else {
+        messageDiv.innerHTML = '<div class="chat-avatar ai">AI</div><div class="chat-bubble">' + formatContent(content) + '</div>';
+    }
+
+    messagesContainer.appendChild(messageDiv);
+    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+// 重置趋势分析
+function resetTrendAnalysis() {
+    document.getElementById('trendInputSection').style.display = 'block';
+    document.getElementById('trendResultSection').style.display = 'none';
+    document.getElementById('healthDataInput').value = '';
+    renderTrendRecordsList();
+    renderHistoryTrendRecords();
+}
+
+// HTML转义
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 格式化内容（支持换行）
+function formatContent(text) {
+    return escapeHtml(text).replace(/\n/g, '<br>');
+}
+
+// 点击弹窗外部关闭
+window.onclick = function(event) {
+    const modal = document.getElementById('trendModal');
+    if (event.target === modal) {
+        closeTrendModal();
+    }
+    const recordModal = document.getElementById('recordDetailModal');
+    if (event.target === recordModal) {
+        closeRecordDetailModal();
+    }
+}
+
+// ========== 切片浏览器 ==========
+let sliceData = null;
+let slicePlayTimer = null;
+let sliceIsPlaying = false;
+
+function parsePatientId(filename) {
+    // 从 case_XXXXX_YYY.jpg 格式提取患者ID
+    const match = filename.match(/case_(\d+)_\d+/);
+    return match ? match[1] : null;
+}
+
+async function loadPatientSlices(patientId, dataset) {
+    try {
+        const resp = await fetch('/api/patient-slices?patient_id=' + patientId + '&dataset=' + dataset);
+        const data = await resp.json();
+        if (data.success && data.slices && data.slices.length > 0) {
+            sliceData = data;
+            initSliceBrowser();
+        }
+    } catch (e) {
+        console.error('加载切片数据失败:', e);
+    }
+}
+
+function initSliceBrowser() {
+    const browser = document.getElementById('slice-browser');
+    const slider = document.getElementById('slice-slider');
+    const info = document.getElementById('slice-info');
+
+    browser.style.display = 'block';
+    slider.max = sliceData.slices.length - 1;
+    slider.value = 0;
+    info.textContent = '患者 ' + sliceData.patient_id + ' | 共 ' + sliceData.total + ' 张切片 | 数据集: ' + sliceData.dataset.toUpperCase();
+
+    // 找到当前切片的位置
+    if (currentResultData && currentResultData.original_name) {
+        const currentSliceNum = currentResultData.original_name.match(/case_\d+_(\d+)/);
+        if (currentSliceNum) {
+            for (let i = 0; i < sliceData.slices.length; i++) {
+                if (sliceData.slices[i].slice_num === currentSliceNum[1]) {
+                    slider.value = i;
+                    break;
+                }
+            }
+        }
+    }
+
+    onSliceChange(slider.value);
+}
+
+function onSliceChange(index) {
+    if (!sliceData || !sliceData.slices[index]) return;
+    const slice = sliceData.slices[index];
+    const patientId = sliceData.patient_id;
+    const dataset = sliceData.dataset;
+
+    document.getElementById('slice-original-img').src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=original';
+    document.getElementById('slice-predict-img').src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=prediction';
+
+    document.getElementById('slice-info').textContent = '患者 ' + patientId + ' | 切片 ' + (parseInt(index) + 1) + '/' + sliceData.total + ' (' + slice.filename + ') | 数据集: ' + dataset.toUpperCase();
+}
+
+function slicePrev() {
+    const slider = document.getElementById('slice-slider');
+    if (slider.value > 0) {
+        slider.value = parseInt(slider.value) - 1;
+        onSliceChange(slider.value);
+    }
+}
+
+function sliceNext() {
+    const slider = document.getElementById('slice-slider');
+    if (slider.value < parseInt(slider.max)) {
+        slider.value = parseInt(slider.value) + 1;
+        onSliceChange(slider.value);
+    }
+}
+
+function toggleSlicePlay() {
+    const btn = document.getElementById('slice-play-btn');
+    const icon = document.getElementById('slice-play-icon');
+    if (sliceIsPlaying) {
+        clearInterval(slicePlayTimer);
+        sliceIsPlaying = false;
+        icon.className = 'fas fa-play';
+        btn.innerHTML = '<i class="fas fa-play" id="slice-play-icon"></i> 自动播放';
+    } else {
+        const speed = parseInt(document.getElementById('slice-play-speed').value);
+        sliceIsPlaying = true;
+        btn.innerHTML = '<i class="fas fa-pause" id="slice-play-icon"></i> 暂停播放';
+        slicePlayTimer = setInterval(function() {
+            const slider = document.getElementById('slice-slider');
+            if (parseInt(slider.value) >= parseInt(slider.max)) {
+                slider.value = 0;
+            } else {
+                slider.value = parseInt(slider.value) + 1;
+            }
+            onSliceChange(slider.value);
+        }, speed);
+    }
+}
+
+</script>
+
+<style>
+/* 弹窗样式 */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow-lg);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.modal-close {
+    font-size: 24px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.modal-close:hover {
+    color: var(--text-primary);
+}
+
+/* 历史趋势分析样式 */
+.history-trend-section {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px;
+}
+
+.history-trend-table-wrapper {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: white;
+}
+
+.history-trend-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.history-trend-table thead {
+    background: #f1f5f9;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.history-trend-table th {
+    padding: 10px 12px;
+    text-align: center;
+    font-weight: 600;
+    color: #475569;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.history-trend-table td {
+    padding: 10px 12px;
+    text-align: center;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+}
+
+.history-trend-table tbody tr:hover {
+    background: #f8fafc;
+}
+
+.history-trend-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.history-trend-table .td-time {
+    white-space: nowrap;
+    color: #64748b;
+    font-size: 12px;
+}
+
+.history-trend-table .td-name {
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+}
+
+.history-trend-table .td-metric {
+    font-family: 'SF Mono', Monaco, monospace;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.dataset-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.dataset-kits19 {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.dataset-lidc {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.dataset-other {
+    background: #f3f4f6;
+    color: #4b5563;
+}
+
+/* 空状态样式 */
+.history-empty-state {
+    text-align: center;
+    padding: 32px 20px;
+    color: var(--text-muted);
+}
+
+.history-empty-state i {
+    font-size: 36px;
+    margin-bottom: 12px;
+    display: block;
+    color: #cbd5e1;
+}
+
+.history-empty-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.history-empty-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* 图片预览样式 */
+.preview-img-wrapper {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.preview-img-wrapper:hover .zoom-hint {
+    opacity: 1;
+}
+
+.zoom-hint {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+
+/* 图片放大预览遮罩 */
+.image-preview-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    cursor: zoom-out;
+}
+
+.image-preview-container {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+}
+
+.image-preview-container img {
+    max-width: 90vw;
+    max-height: 85vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.image-preview-close {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.image-preview-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.image-preview-hint {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 12px;
+    margin-top: 12px;
+}
+
+/* 加载动画 */
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #e2e8f0;
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}

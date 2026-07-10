@@ -120,10 +120,7 @@
                     <div style="font-size: 12px; color: #64748b; margin-bottom: 6px;"><i class="fas fa-tag" style="margin-right: 4px;"></i>分类类别</div>
                     <div id="cls-class-name" style="font-size: 22px; font-weight: 700; color: #16a34a;">-</div>
                 </div>
-                <div style="background: white; border-radius: 10px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 6px;"><i class="fas fa-percentage" style="margin-right: 4px;"></i>置信度</div>
-                    <div id="cls-confidence" style="font-size: 22px; font-weight: 700; color: #1e293b;">-</div>
-                </div>
+
             </div>
         </div>
 
@@ -741,6 +738,9 @@ async function startSegmentation() {
     }
 }
 
+// 分类API服务地址（分类服务运行在5005端口，分割服务保持原地址不变）
+const CLASSIFY_API_BASE = 'http://127.0.0.1:5005';
+
 // 开始分类 - 调用后端分类模型
 async function startClassification() {
     if (!selectedFile) {
@@ -757,12 +757,19 @@ async function startClassification() {
     formData.append('file', selectedFile);
 
     try {
-        const response = await fetch('/api/classify', {
+        console.log('[DEBUG] 开始发送分类请求，文件名:', selectedFile.name);
+        const response = await fetch(CLASSIFY_API_BASE + '/api/classify', {
             method: 'POST',
             body: formData
         });
 
+        console.log('[DEBUG] 分类请求响应状态:', response.status);
+        if (!response.ok) {
+            throw new Error('HTTP error! status: ' + response.status);
+        }
+
         const data = await response.json();
+        console.log('[DEBUG] 分类响应数据:', data);
 
         document.getElementById('page-loading-area').style.display = 'none';
 
@@ -781,7 +788,6 @@ async function startClassification() {
             // 填充分类结果
             document.getElementById('cls-image-name').textContent = data.image_name || selectedFile.name;
             document.getElementById('cls-class-name').textContent = data.class_name || '未知';
-            document.getElementById('cls-confidence').textContent = data.confidence ? (data.confidence * 100).toFixed(2) + '%' : '-';
 
             // 显示原图
             const reader = new FileReader();
