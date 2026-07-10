@@ -1,0 +1,8 @@
+cloudflared.exe
+ngrok.exe
+ngrok.zip
+uploads/
+__pycache__/
+*.pyc
+.env
+.venv/

@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">科普中心</h1>
+    <p class="page-desc">医学知识科普，健康常识普及</p>
+</div>
+
+<!-- 科普分类（放在上方，铺满） -->
+<div class="card">
+    <div class="card-header">
+        <div>
+            <div class="card-title">科普分类</div>
+            <div class="card-subtitle">按器官浏览科普内容</div>
+        </div>
+    </div>
+    <div class="category-filter" style="display:flex;flex-wrap:wrap;gap:10px;padding:4px 0;">
+        {% if not selected_category %}
+        <a href="{{ url_for('science') }}" class="category-tag active" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 18px;border-radius:8px;background:var(--primary, #333);color:#fff;font-size:14px;font-weight:500;text-decoration:none;white-space:nowrap;border:1px solid var(--primary, #333);box-shadow:0 2px 8px rgba(0,0,0,0.15);">全部</a>
+        {% else %}
+        <a href="{{ url_for('science') }}" class="category-tag" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 18px;border-radius:8px;background:#f0f2f5;color:#555;font-size:14px;font-weight:500;text-decoration:none;white-space:nowrap;border:1px solid transparent;">全部</a>
+        {% endif %}
+        {% for category in categories %}
+        {% if category == selected_category %}
+        <a href="{{ url_for('science', category=category) }}" class="category-tag active" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 18px;border-radius:8px;background:var(--primary, #333);color:#fff;font-size:14px;font-weight:500;text-decoration:none;white-space:nowrap;border:1px solid var(--primary, #333);box-shadow:0 2px 8px rgba(0,0,0,0.15);">{{ category }}</a>
+        {% else %}
+        <a href="{{ url_for('science', category=category) }}" class="category-tag" style="display:inline-flex;align-items:center;justify-content:center;padding:8px 18px;border-radius:8px;background:#f0f2f5;color:#555;font-size:14px;font-weight:500;text-decoration:none;white-space:nowrap;border:1px solid transparent;">{{ category }}</a>
+        {% endif %}
+        {% endfor %}
+    </div>
+</div>
+
+<!-- 科普文章列表（铺满平铺） -->
+<div class="card">
+    <div class="card-header">
+        <div>
+            <div class="card-title">科普文章</div>
+            {% if selected_category %}
+            <div class="card-subtitle">当前分类：{{ selected_category }}</div>
+            {% else %}
+            <div class="card-subtitle">医学知识科普</div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="forum-list" id="article-list">
+        {% for article in filtered_articles %}
+        <div class="forum-item" data-article-id="{{ article.id }}">
+            <div class="forum-title">{{ article.title }}</div>
+            <div class="forum-content">{{ article.summary }}</div>
+            <div class="forum-tags">
+                {% for tag in article.tags %}
+                <span class="tag">{{ tag }}</span>
+                {% endfor %}
+            </div>
+            <div class="forum-actions">
+                <a href="{{ article.url }}" target="_blank" class="forum-action" style="color: var(--primary);">
+                    <i class="fas fa-external-link-alt"></i> 阅读更多
+                </a>
+                <div class="forum-action" onclick="toggleFavoriteArticle('{{ article.id }}', '{{ article.title | replace("'", "\\'") }}', '{{ article.summary | replace("'", "\\'") | truncate(50) }}')">
+                    <i class="fas fa-star"></i> <span class="fav-text">收藏</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        {% if filtered_articles|length == 0 %}
+        <div class="empty-state">
+            <p>暂无该分类下的文章</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// ========== 用户数据隔离 ==========
+const CURRENT_USER = {% if user %}'{{ user.username }}'{% else %}null{% endif %};
+
+function userKey(key) {
+    return CURRENT_USER ? ('user_' + CURRENT_USER + '_' + key) : key;
+}
+
+// ========== 收藏功能 ==========
+const STORAGE_KEYS = {
+    favorites: userKey('user_favorites')
+};
+
+function getFavorites() {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEYS.favorites);
+        if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return { posts: [], articles: [] };
+}
+
+function saveFavorites(favorites) {
+    localStorage.setItem(STORAGE_KEYS.favorites, JSON.stringify(favorites));
+}
+
+function toggleFavoriteArticle(articleId, title, summary) {
+    if (!CURRENT_USER) {
+        alert('请先登录后再收藏文章');
+        window.location.href = "{{ url_for('login') }}?next=science";
+        return;
+    }
+    const favorites = getFavorites();
+    const index = favorites.articles.findIndex(f => f.id === articleId);
+
+    const articleEl = document.querySelector(`[data-article-id="${articleId}"]`);
+    const favTextEl = articleEl.querySelector('.fav-text');
+    const favActionEl = articleEl.querySelector('.forum-action:nth-child(2)');
+
+    if (index >= 0) {
+        // 取消收藏
+        favorites.articles.splice(index, 1);
+        favTextEl.textContent = '收藏';
+        favActionEl.classList.remove('favorited');
+    } else {
+        // 添加收藏
+        favorites.articles.push({
+            id: articleId,
+            title: title,
+            summary: summary,
+            type: '文章',
+            time: new Date().toISOString().split('T')[0]
+        });
+        favTextEl.textContent = '已收藏';
+        favActionEl.classList.add('favorited');
+    }
+
+    saveFavorites(favorites);
+}
+
+// ========== 初始化收藏状态 ==========
+document.addEventListener('DOMContentLoaded', function() {
+    const favorites = getFavorites();
+    favorites.articles.forEach(fav => {
+        const articleEl = document.querySelector(`[data-article-id="${fav.id}"]`);
+        if (articleEl) {
+            const favTextEl = articleEl.querySelector('.fav-text');
+            const favActionEl = articleEl.querySelector('.forum-action:nth-child(2)');
+            if (favTextEl) favTextEl.textContent = '已收藏';
+            if (favActionEl) favActionEl.classList.add('favorited');
+        }
+    });
+});
+</script>
+
+<style>
+/* 科普分类 - 小板块样式 */
+.category-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 4px 0;
+}
+
+.category-tag {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 18px;
+    border-radius: 8px;
+    background: var(--bg-secondary, #f0f2f5);
+    color: var(--text-secondary, #555);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.category-tag:hover {
+    background: var(--primary-light, #e8f0fe);
+    color: var(--primary, #4a90d9);
+    border-color: var(--primary-light, #d0e0f5);
+}
+
+.category-tag.active {
+    background: var(--primary, #333);
+    color: #fff;
+    border-color: var(--primary, #333);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* 收藏状态 */
+.forum-action.favorited {
+    color: #f59e0b;
+}
+
+.forum-action.favorited i {
+    color: #f59e0b;
+}
+
+/* 空状态 */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+}
+</style>
+{% endblock %}

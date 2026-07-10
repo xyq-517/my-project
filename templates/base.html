@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}胸腹部器官病灶检测平台{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% set is_doctor_user = false %}
+    {% set user_role = '' %}
+    {% if user %}
+        {% set user_role = user.role|default('') %}
+        {% if not user_role %}{% set user_role = user.user_type|default('') %}{% endif %}
+        {% if not user_role %}{% set user_role = user.type|default('') %}{% endif %}
+        {% if not user_role %}{% set user_role = user.mode|default('') %}{% endif %}
+        {% if not user_role %}{% set user_role = user.identity|default('') %}{% endif %}
+        {% if not user_role %}{% set user_role = user.account_type|default('') %}{% endif %}
+
+        {% set session_role = '' %}
+        {% if session is defined %}
+            {% set session_role = session.get('role', '') %}
+            {% if not session_role %}{% set session_role = session.get('user_type', '') %}{% endif %}
+            {% if not session_role %}{% set session_role = session.get('type', '') %}{% endif %}
+            {% if not session_role %}{% set session_role = session.get('mode', '') %}{% endif %}
+            {% if not session_role %}{% set session_role = session.get('identity', '') %}{% endif %}
+            {% if not session_role %}{% set session_role = session.get('account_type', '') %}{% endif %}
+        {% endif %}
+
+        {% set role_key = (user_role or session_role)|string|lower %}
+        {% if role_key == 'doctor' or role_key == 'doctor_mode' or role_key == 'medical' or role_key == 'physician' or user_role == '医生' or user_role == '医师' or session_role == '医生' or session_role == '医师' or user.is_doctor|default(false) %}
+            {% set is_doctor_user = true %}
+        {% endif %}
+    {% endif %}
+
+    <!-- 侧边导航栏 -->
+    <aside class="sidebar">
+        <div class="logo">
+            <div class="logo-icon"><i class="fas fa-lungs"></i></div>
+            <div class="logo-text">病灶检测平台</div>
+        </div>
+        <nav class="nav-menu">
+            {% for item in nav_items %}
+                {% if not (is_doctor_user and (item.page == 'science' or item.label == '科普中心')) %}
+                    {% if item.divider %}
+                        <div class="nav-divider"></div>
+                    {% else %}
+                        <a href="{{ url_for(item.page) if item.page != 'home' else url_for('index') }}" class="nav-item {% if item.active %}active{% endif %}">
+                            <i class="{{ item.icon }}"></i>
+                            <span>{{ item.label }}</span>
+                        </a>
+                    {% endif %}
+                {% endif %}
+            {% endfor %}
+            <div class="nav-divider"></div>
+            {% if user %}
+            <a href="{{ url_for('logout') }}" class="nav-item">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>退出登录</span>
+            </a>
+            {% else %}
+            <a href="{{ url_for('login') }}" class="nav-item">
+                <i class="fas fa-sign-in-alt"></i>
+                <span>登录</span>
+            </a>
+            {% endif %}
+        </nav>
+    </aside>
+
+    <!-- 顶部栏 -->
+    <header class="header">
+        <div class="header-left">
+            <div class="breadcrumb">
+                <span>{{ page_title }}</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="search-box" style="position: relative;">
+                <i class="fas fa-search"></i>
+                <input type="text" id="global-search-input" placeholder="搜索功能、文章、知识..." autocomplete="off" oninput="handleGlobalSearch(this.value)" onfocus="handleGlobalSearch(this.value)" onblur="setTimeout(function(){ closeSearchDropdown(); }, 200)">
+                <div id="search-dropdown" style="display: none; position: absolute; top: 100%; right: 0; width: 380px; max-height: 460px; overflow-y: auto; background: white; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.12); border: 1px solid #e2e8f0; margin-top: 8px; z-index: 1000;">
+                    <div id="search-results"></div>
+                </div>
+            </div>
+            {% if user %}
+            <div class="user-info">
+                <div class="user-avatar">{{ user.username[0] }}</div>
+                <span class="user-name">{{ user.username }}</span>
+            </div>
+            {% else %}
+            <a href="{{ url_for('login') }}" class="btn btn-primary btn-sm">登录</a>
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+    // ========== 全局搜索功能 ==========
+    (function() {
+        // 平台功能页面索引
+        var pages = [
+            { title: '大众模式', desc: '图像分割与分类检测', url: '{{ url_for("public") }}', category: '功能' },
+            { title: '医生模式', desc: '专业医学影像检测', url: '{{ url_for("doctor") }}', category: '功能' },
+            { title: 'AI分析中心', desc: '智能医疗助手问答', url: '{{ url_for("ai_center") }}', category: '功能' },
+            { title: '交流论坛', desc: '患者交流与经验分享', url: '{{ url_for("forum") }}', category: '功能' },
+            { title: '科普中心', desc: '医学知识科普文章', url: '{{ url_for("science") }}', category: '功能' },
+            { title: '我的', desc: '个人检测记录与收藏', url: '{{ url_for("my") }}', category: '功能' },
+            { title: '图像分割', desc: '上传CT/MRI图像进行器官病灶分割', url: '{{ url_for("public") }}', category: '功能' },
+            { title: '图像分类', desc: '上传图像进行病灶分类识别', url: '{{ url_for("public") }}', category: '功能' },
+            { title: 'AI智能分析', desc: '对检测结果生成AI分析报告', url: '{{ url_for("ai_center") }}', category: '功能' },
+            { title: '检测记录', desc: '查看历史检测记录详情', url: '{{ url_for("my") }}', category: '功能' },
+            { title: '导出PDF报告', desc: '将检测结果导出为PDF报告', url: '{{ url_for("my") }}', category: '功能' },
+            { title: '健康趋势分析', desc: '基于多次检测数据的健康趋势', url: '{{ url_for("my") }}', category: '功能' }
+        ];
+
+        {% if is_doctor_user %}
+        pages = pages.filter(function(item) {
+            return item.title !== '科普中心' && item.url !== '{{ url_for("science") }}';
+        });
+        {% endif %}
+
+        // 科普文章索引
+        var articles = {% if is_doctor_user %}[]{% else %}[
+            { title: '肺结节', desc: '肺部影像上的局灶性圆形致密影', url: '{{ url_for("science") }}', category: '科普' },
+            { title: '肝囊肿', desc: '常见的良性肝脏疾病', url: '{{ url_for("science") }}', category: '科普' },
+            { title: '计算机断层扫描', desc: 'CT检查的原理与注意事项', url: '{{ url_for("science") }}', category: '科普' },
+            { title: '脾脏常见疾病', desc: '免疫系统与脾脏健康', url: '{{ url_for("science") }}', category: '科普' },
+            { title: '肾结石', desc: '尿液中成分形成的结石', url: '{{ url_for("science") }}', category: '科普' },
+            { title: '肠胃疾病', desc: '常见消化系统疾病', url: '{{ url_for("science") }}', category: '科普' },
+            { title: '肝脏疾病', desc: '肝脏常见疾病与健康', url: '{{ url_for("science") }}', category: '科普' },
+            { title: '肝癌', desc: '2026肝癌流行病学趋势', url: '{{ url_for("science") }}', category: '科普' },
+            { title: '肾病', desc: '肾脏病变的统称', url: '{{ url_for("science") }}', category: '科普' },
+            { title: '肾肿瘤', desc: '肾肿瘤大部分为恶性', url: '{{ url_for("science") }}', category: '科普' },
+            { title: '肝血管瘤', desc: '体检发现肝血管瘤怎么办', url: '{{ url_for("science") }}', category: '科普' },
+            { title: '胰腺癌', desc: '癌中之王的深度解析', url: '{{ url_for("science") }}', category: '科普' },
+            { title: '原发性肝癌诊疗指南', desc: '2026年版诊疗指南', url: '{{ url_for("science") }}', category: '科普' }
+        ]{% endif %};
+
+        var allItems = pages.concat(articles);
+
+        // 搜索匹配
+        function search(keyword) {
+            if (!keyword || keyword.trim().length === 0) return [];
+            keyword = keyword.trim().toLowerCase();
+            var results = [];
+
+            for (var i = 0; i < allItems.length; i++) {
+                var item = allItems[i];
+                var titleMatch = item.title.toLowerCase().indexOf(keyword) >= 0;
+                var descMatch = item.desc.toLowerCase().indexOf(keyword) >= 0;
+                var categoryMatch = item.category.toLowerCase().indexOf(keyword) >= 0;
+                if (titleMatch || descMatch || categoryMatch) {
+                    results.push({
+                        title: item.title,
+                        desc: item.desc,
+                        url: item.url,
+                        category: item.category,
+                        titleMatch: titleMatch
+                    });
+                }
+            }
+
+            // 按匹配度排序：标题匹配优先
+            results.sort(function(a, b) {
+                if (a.titleMatch && !b.titleMatch) return -1;
+                if (!a.titleMatch && b.titleMatch) return 1;
+                return 0;
+            });
+
+            return results;
+        }
+
+        // 渲染搜索结果
+        function renderResults(keyword) {
+            var results = search(keyword);
+            var container = document.getElementById('search-results');
+            var dropdown = document.getElementById('search-dropdown');
+
+            if (results.length === 0 && keyword.trim().length > 0) {
+                dropdown.style.display = 'block';
+                container.innerHTML = '<div style="padding: 24px; text-align: center; color: #94a3b8;">' +
+                    '<p style="font-size: 13px;">未找到 "' + escapeHtml(keyword) + '" 相关内容</p></div>';
+                return;
+            }
+
+            if (results.length === 0) {
+                dropdown.style.display = 'none';
+                return;
+            }
+
+            dropdown.style.display = 'block';
+
+            // 按分类分组
+            var grouped = {};
+            for (var i = 0; i < results.length; i++) {
+                var cat = results[i].category;
+                if (!grouped[cat]) grouped[cat] = [];
+                grouped[cat].push(results[i]);
+            }
+
+            var html = '<div style="padding: 8px 16px 4px; font-size: 11px; color: #94a3b8; font-weight: 600;">找到 ' + results.length + ' 个结果</div>';
+
+            var categories = Object.keys(grouped);
+            var categoryColors = { '功能': '#6366f1', '科普': '#10b981' };
+
+            for (var c = 0; c < categories.length; c++) {
+                var cat = categories[c];
+                var items = grouped[cat];
+                for (var j = 0; j < items.length; j++) {
+                    var item = items[j];
+                    html += '<a href="' + item.url + '" style="display: block; padding: 8px 16px; text-decoration: none; color: #334155; transition: background 0.15s; border-radius: 6px; margin: 0 8px;" onmouseover="this.style.background=\'#f0f9ff\'" onmouseout="this.style.background=\'transparent\'">';
+                    html += '<div style="font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">' + highlightMatch(item.title, keyword) + '</div>';
+                    html += '<div style="font-size: 11px; color: #94a3b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;">' + escapeHtml(item.desc) + '</div>';
+                    html += '</a>';
+                }
+            }
+
+            container.innerHTML = html;
+        }
+
+        // 高亮匹配文本
+        function highlightMatch(text, keyword) {
+            if (!keyword) return escapeHtml(text);
+            var regex = new RegExp('(' + keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
+            return escapeHtml(text).replace(regex, '<span style="color: #0369a1; font-weight: 700;">$1</span>');
+        }
+
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 暴露到全局
+        window.handleGlobalSearch = function(value) {
+            renderResults(value);
+        };
+
+        window.closeSearchDropdown = function() {
+            var dropdown = document.getElementById('search-dropdown');
+            if (dropdown) dropdown.style.display = 'none';
+        };
+
+        // 点击页面其他区域关闭搜索下拉
+        document.addEventListener('click', function(e) {
+            var searchBox = document.querySelector('.search-box');
+            if (searchBox && !searchBox.contains(e.target)) {
+                closeSearchDropdown();
+            }
+        });
+
+        // ESC关闭搜索
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeSearchDropdown();
+                var input = document.getElementById('global-search-input');
+                if (input) input.blur();
+            }
+        });
+    })();
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

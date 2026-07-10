@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">设置</h1>
+    <p class="page-desc">管理您的账户和系统设置</p>
+</div>
+
+{% if not user %}
+<!-- 未登录提示 -->
+<div class="card" style="text-align: center; padding: 60px 40px;">
+    <div style="font-size: 64px; margin-bottom: 24px;">🔒</div>
+    <h2 style="font-size: 24px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">请先登录</h2>
+    <p style="font-size: 16px; color: var(--text-secondary); margin-bottom: 32px;">登录后即可管理您的账户设置</p>
+    <div style="display: flex; gap: 16px; justify-content: center;">
+        <a href="{{ url_for('login') }}?next=settings" class="btn btn-primary">立即登录</a>
+        <a href="{{ url_for('register') }}" class="btn btn-outline">注册账号</a>
+    </div>
+</div>
+{% else %}
+<div class="two-column">
+    <div>
+        <!-- 个人信息 -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">个人信息</div>
+                    <div class="card-subtitle">管理您的基本资料</div>
+                </div>
+            </div>
+            <div class="result-panel" style="background: transparent; padding: 0;">
+                <div class="result-item" style="padding: 16px; background: #f8fafc; border-radius: 8px; margin-bottom: 12px;">
+                    <span class="result-label">用户名</span>
+                    <span class="result-value">{{ user.username }}</span>
+                </div>
+            </div>
+            <div style="margin-top: 20px;">
+                <button class="btn btn-primary">编辑资料</button>
+            </div>
+        </div>
+
+        <!-- 通知设置 -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">通知设置</div>
+                    <div class="card-subtitle">管理您的消息通知偏好</div>
+                </div>
+            </div>
+            <div class="result-panel" style="background: transparent; padding: 0;">
+                <div class="result-item" style="padding: 16px; background: #f8fafc; border-radius: 8px; margin-bottom: 12px;">
+                    <span class="result-label">检测完成通知</span>
+                    <span class="result-value"><span class="status-badge status-success">已开启</span></span>
+                </div>
+                <div class="result-item" style="padding: 16px; background: #f8fafc; border-radius: 8px; margin-bottom: 12px;">
+                    <span class="result-label">系统公告</span>
+                    <span class="result-value"><span class="status-badge status-success">已开启</span></span>
+                </div>
+                <div class="result-item" style="padding: 16px; background: #f8fafc; border-radius: 8px; margin-bottom: 12px;">
+                    <span class="result-label">论坛回复通知</span>
+                    <span class="result-value"><span class="status-badge status-success">已开启</span></span>
+                </div>
+                <div class="result-item" style="padding: 16px; background: #f8fafc; border-radius: 8px;">
+                    <span class="result-label">邮件通知</span>
+                    <span class="result-value"><span class="status-badge status-warning">已关闭</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <!-- 安全设置 -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">安全设置</div>
+                    <div class="card-subtitle">管理账户安全选项</div>
+                </div>
+            </div>
+            <div class="ability-grid" style="grid-template-columns: 1fr;">
+                <div class="ability-card" style="text-align: left; display: flex; align-items: center; gap: 16px;">
+                    <div class="ability-icon blue" style="margin: 0; flex-shrink: 0;">
+                        <i class="fas fa-key"></i>
+                    </div>
+                    <div>
+                        <div class="ability-title" style="margin-bottom: 4px;">修改密码</div>
+                        <div class="ability-desc" style="margin-bottom: 0;">定期更换密码以保护账户安全</div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" style="margin-left: auto;">修改</button>
+                </div>
+                <div class="ability-card" style="text-align: left; display: flex; align-items: center; gap: 16px;">
+                    <div class="ability-icon green" style="margin: 0; flex-shrink: 0;">
+                        <i class="fas fa-mobile-alt"></i>
+                    </div>
+                    <div>
+                        <div class="ability-title" style="margin-bottom: 4px;">手机绑定</div>
+                        <div class="ability-desc" style="margin-bottom: 0;">已绑定：138****8888</div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" style="margin-left: auto;">更换</button>
+                </div>
+                <div class="ability-card" style="text-align: left; display: flex; align-items: center; gap: 16px;">
+                    <div class="ability-icon orange" style="margin: 0; flex-shrink: 0;">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div>
+                        <div class="ability-title" style="margin-bottom: 4px;">双重验证</div>
+                        <div class="ability-desc" style="margin-bottom: 0;">增强账户安全性</div>
+                    </div>
+                    <button class="btn btn-outline btn-sm" style="margin-left: auto;">开启</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 系统设置 -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">系统设置</div>
+                    <div class="card-subtitle">自定义系统行为</div>
+                </div>
+            </div>
+            <div class="result-panel" style="background: transparent; padding: 0;">
+                <div class="result-item" style="padding: 16px; background: #f8fafc; border-radius: 8px; margin-bottom: 12px;">
+                    <span class="result-label">语言</span>
+                    <span class="result-value">简体中文</span>
+                </div>
+                <div class="result-item" style="padding: 16px; background: #f8fafc; border-radius: 8px; margin-bottom: 12px;">
+                    <span class="result-label">主题</span>
+                    <span class="result-value">浅色模式</span>
+                </div>
+                <div class="result-item" style="padding: 16px; background: #f8fafc; border-radius: 8px; margin-bottom: 12px;">
+                    <span class="result-label">数据存储位置</span>
+                    <span class="result-value">云端</span>
+                </div>
+                <div class="result-item" style="padding: 16px; background: #f8fafc; border-radius: 8px;">
+                    <span class="result-label">自动保存</span>
+                    <span class="result-value"><span class="status-badge status-success">已开启</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

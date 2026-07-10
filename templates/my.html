@@ -1,0 +1,1335 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">我的</h1>
+    <p class="page-desc">查看您的记录和收藏内容</p>
+</div>
+
+{% if not user %}
+<!-- 未登录提示 -->
+<div class="card" style="text-align: center; padding: 60px 40px;">
+    <div style="font-size: 64px; margin-bottom: 24px;">🔒</div>
+    <h2 style="font-size: 24px; font-weight: 600; color: var(--text-primary); margin-bottom: 12px;">请先登录</h2>
+    <p style="font-size: 16px; color: var(--text-secondary); margin-bottom: 32px;">登录后即可查看您的检测记录和收藏内容</p>
+    <div style="display: flex; gap: 16px; justify-content: center;">
+        <a href="{{ url_for('login') }}?next=my" class="btn btn-primary">立即登录</a>
+        <a href="{{ url_for('register') }}" class="btn btn-outline">注册账号</a>
+    </div>
+</div>
+{% else %}
+<!-- 统计卡片 -->
+<div class="stats-grid" id="stats-section">
+    <div class="stat-card">
+        <div class="stat-icon blue">
+            <i class="fas fa-file-medical"></i>
+        </div>
+        <div class="stat-info">
+            <h3 id="stat-record-count">0</h3>
+            <p>检测记录</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon green">
+            <i class="fas fa-star"></i>
+        </div>
+        <div class="stat-info">
+            <h3 id="stat-fav-count">0</h3>
+            <p>收藏内容</p>
+        </div>
+    </div>
+</div>
+
+<!-- 检测记录 -->
+<div class="card" id="records-section">
+    <div class="card-header">
+        <div>
+            <div class="card-title">我的检测记录</div>
+            <div class="card-subtitle" id="records-subtitle">查看您的历史检测记录</div>
+        </div>
+        <span id="my-records-count" class="card-more">共 0 条记录</span>
+    </div>
+    <div id="my-records-table-wrapper">
+        <table class="data-table" style="text-align: center;">
+            <thead>
+                <tr>
+                    <th style="text-align: center;">检测项目</th>
+                    <th style="text-align: center;">检测日期</th>
+                    <th style="text-align: center;">检测模式</th>
+                    <th style="text-align: center;">操作</th>
+                </tr>
+            </thead>
+            <tbody id="my-records-tbody">
+                <!-- 动态渲染 -->
+            </tbody>
+        </table>
+    </div>
+    <div id="my-records-empty" style="text-align: center; padding: 40px 20px; color: var(--text-muted); display: none;">
+        <i class="fas fa-folder-open" style="font-size: 40px; margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
+        <p>暂无检测记录</p>
+        <p style="font-size: 13px; margin-top: 4px;">在大众模式或医生模式中完成检测并保存后，记录将显示在此处</p>
+    </div>
+</div>
+
+<!-- 我的收藏 -->
+<div class="card" id="favorites-section">
+    <div class="card-header">
+        <div>
+            <div class="card-title">我的收藏</div>
+            <div class="card-subtitle">查看您收藏的内容</div>
+        </div>
+    </div>
+    <!-- 收藏分类标签 -->
+    <div class="fav-tabs" style="display: flex; gap: 8px; padding: 0 20px 16px; border-bottom: 1px solid var(--border);">
+        <button class="fav-tab active" onclick="switchFavTab('all')" data-tab="all">全部</button>
+        <button class="fav-tab" onclick="switchFavTab('posts')" data-tab="posts">帖子收藏</button>
+        <button class="fav-tab" onclick="switchFavTab('articles')" data-tab="articles">文章收藏</button>
+    </div>
+    <div class="record-list" id="favorites-list">
+        <!-- 收藏列表动态渲染 -->
+    </div>
+    <div id="favorites-empty" style="text-align: center; padding: 40px 20px; color: var(--text-muted); display: none;">
+        <i class="fas fa-star" style="font-size: 40px; margin-bottom: 12px; display: block; color: #cbd5e1;"></i>
+        <p>暂无收藏内容</p>
+        <p style="font-size: 13px; margin-top: 4px;">在论坛或科普中心收藏内容后将显示在此处</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- ==================== 记录详情弹窗 ==================== -->
+<div id="myRecordDetailModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 1000px; width: 95%;">
+        <div class="modal-header">
+            <h3 id="myRecordDetailTitle">检测记录详情</h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button class="btn btn-primary btn-sm" onclick="exportMyRecordPDF()" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none;">
+                    <i class="fas fa-file-pdf"></i> 导出报告
+                </button>
+                <span class="modal-close" onclick="closeMyRecordDetailModal()">&times;</span>
+            </div>
+        </div>
+        <div class="modal-body">
+            <!-- 1. 记录信息 -->
+            <div id="myRecordDetailMeta" style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 10px; padding: 14px 18px; margin-bottom: 16px;">
+                <!-- 动态填充 -->
+            </div>
+
+            <!-- 分类模式详情区域 -->
+            <div id="my-classification-detail-area" style="display: none;">
+                <!-- 2. 原始图 + 3. 类别 -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                    <!-- 原始图像 -->
+                    <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
+                        <div style="background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center;">原始图像</div>
+                        <img id="my-detail-original" src="" alt="原始图像" style="width: 100%; height: 250px; object-fit: contain; background: #f8fafc; cursor: zoom-in;" ondblclick="openMyImagePreview('my-detail-original')">
+                    </div>
+                    <!-- 分类结果 -->
+                    <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white; display: flex; flex-direction: column;">
+                        <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 8px 12px; font-size: 13px; font-weight: 600; color: white; text-align: center;">
+                            <i class="fas fa-tags" style="margin-right: 6px;"></i>分类结果
+                        </div>
+                        <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);">
+                            <div style="text-align: center;">
+                                <div style="font-size: 14px; color: #64748b; margin-bottom: 8px;">分类类别</div>
+                                <div id="my-cls-detail-class-name" style="font-size: 32px; font-weight: 700; color: #16a34a; margin-bottom: 16px;">-</div>
+                                <div style="font-size: 14px; color: #64748b; margin-bottom: 8px;">置信度</div>
+                                <div id="my-cls-detail-confidence" style="font-size: 24px; font-weight: 700; color: #1e293b;">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 分割模式详情区域 -->
+            <div id="my-segmentation-detail-area">
+                <!-- 2. 原始图 + 分割结果 + 金标准 -->
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+                    <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
+                        <div style="background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center;">原始图像</div>
+                        <img id="my-detail-original-seg" src="" alt="原始图像" style="width: 100%; height: 200px; object-fit: contain; background: #f8fafc; cursor: zoom-in;" ondblclick="openMyImagePreview('my-detail-original-seg')">
+                    </div>
+                    <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
+                        <div style="background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center;">分割结果</div>
+                        <img id="my-detail-segment" src="" alt="分割结果" style="width: 100%; height: 200px; object-fit: contain; background: #f8fafc; cursor: zoom-in;" ondblclick="openMyImagePreview('my-detail-segment')">
+                    </div>
+                    <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
+                        <div style="background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center;">金标准</div>
+                        <img id="my-detail-gold" src="" alt="金标准" style="width: 100%; height: 200px; object-fit: contain; background: #f8fafc; cursor: zoom-in;" ondblclick="openMyImagePreview('my-detail-gold')">
+                    </div>
+                </div>
+                <!-- 分割质量指标 -->
+                <div id="my-segment-metrics-section" style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                    <h4 style="margin: 0 0 12px 0; color: #1e293b; font-size: 15px;"><i class="fas fa-tachometer-alt" style="margin-right: 8px;"></i>分割质量指标</h4>
+                    <div id="my-detail-metrics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;">
+                        <!-- 动态填充 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. AI智能分析区域（可选） -->
+            <div style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 12px; padding: 16px; border: 1px solid #bae6fd;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h4 style="margin: 0; color: #0369a1; font-size: 15px;"><i class="fas fa-brain" style="margin-right: 8px;"></i>AI智能分析报告</h4>
+                    <button id="my-btn-ai-analysis" class="btn btn-primary btn-sm" onclick="generateMyAIAnalysis()">
+                        <i class="fas fa-magic"></i> 生成AI分析
+                    </button>
+                </div>
+                <div id="my-ai-analysis-loading" style="display: none; text-align: center; padding: 24px;">
+                    <div style="display: inline-block; width: 32px; height: 32px; border: 3px solid #bae6fd; border-top-color: #0ea5e9; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="margin-top: 12px; color: #0369a1; font-size: 13px;">AI正在分析检测结果，请稍候...</p>
+                </div>
+                <div id="my-ai-analysis-result" style="display: none;">
+                    <!-- AI分析结果将动态填充 -->
+                </div>
+                <div id="my-ai-analysis-empty" style="text-align: center; padding: 24px; color: #64748b; font-size: 13px;">
+                    <i class="fas fa-robot" style="font-size: 28px; margin-bottom: 8px; display: block; color: #0ea5e9;"></i>
+                    点击上方按钮，AI将为您生成专业的检测结果分析报告
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 图片放大预览遮罩 -->
+<div id="myImagePreviewOverlay" class="image-preview-overlay" style="display: none;" onclick="closeMyImagePreview()">
+    <div class="image-preview-container" onclick="event.stopPropagation()">
+        <img id="myOverlayPreviewImg" src="" alt="放大预览">
+        <div class="image-preview-close" onclick="closeMyImagePreview()">
+            <i class="fas fa-times"></i> 关闭
+        </div>
+        <div class="image-preview-hint">点击外部区域关闭</div>
+    </div>
+</div>
+
+<script>
+// ========== 用户数据隔离 ==========
+const CURRENT_USER = {% if user %}'{{ user.username }}'{% else %}null{% endif %};
+
+function userKey(key) {
+    return CURRENT_USER ? ('user_' + CURRENT_USER + '_' + key) : key;
+}
+
+const STORAGE_KEYS = {
+    // 大众模式记录：与大众模式页面使用相同的 key，不加用户前缀，实现数据共享
+    records: 'segment_records',
+    // 医生模式记录：与医生模式页面使用相同的 key
+    doctorRecords: 'doctor_segment_records',
+    // 收藏：用户隔离
+    favorites: userKey('user_favorites')
+};
+
+// ========== 从 localStorage 加载检测记录 ==========
+document.addEventListener('DOMContentLoaded', function() {
+    updateRecordsVisibility();
+    loadMyRecords();
+    loadFavorites();
+});
+
+// ========== 更新记录区域可见性 ==========
+function updateRecordsVisibility() {
+    const recordsSection = document.getElementById('records-section');
+    const favoritesSection = document.getElementById('favorites-section');
+    const statsSection = document.getElementById('stats-section');
+    const recordsSubtitle = document.getElementById('records-subtitle');
+
+    if (!CURRENT_USER) {
+        if (recordsSection) recordsSection.style.display = 'none';
+        if (favoritesSection) favoritesSection.style.display = 'none';
+        if (statsSection) statsSection.style.display = 'none';
+    } else {
+        if (recordsSection) recordsSection.style.display = 'block';
+        if (favoritesSection) favoritesSection.style.display = 'block';
+        if (statsSection) statsSection.style.display = 'grid';
+        if (recordsSubtitle) recordsSubtitle.textContent = '查看您的历史检测记录（' + CURRENT_USER + '）';
+    }
+}
+
+function getRecordsFromStorage() {
+    let allRecords = [];
+    try {
+        // 读取大众模式记录
+        const publicStored = localStorage.getItem(STORAGE_KEYS.records);
+        if (publicStored) {
+            allRecords = allRecords.concat(JSON.parse(publicStored));
+        }
+        // 读取医生模式记录
+        const doctorStored = localStorage.getItem(STORAGE_KEYS.doctorRecords);
+        if (doctorStored) {
+            allRecords = allRecords.concat(JSON.parse(doctorStored));
+        }
+    } catch (e) {}
+    // 按时间排序（最新的在前）
+    allRecords.sort(function(a, b) {
+        return new Date(b.time || 0) - new Date(a.time || 0);
+    });
+    return allRecords;
+}
+
+function getFavorites() {
+    try {
+        const stored = localStorage.getItem(STORAGE_KEYS.favorites);
+        if (stored) return JSON.parse(stored);
+    } catch (e) {}
+    return { posts: [], articles: [] };
+}
+
+function formatMetric(value) {
+    if (value === '-' || value === undefined || value === null) return '-';
+    if (typeof value === 'number') return value.toFixed(4);
+    return value;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function loadMyRecords() {
+    // 未登录时隐藏记录区域
+    const recordsSection = document.getElementById('records-section');
+    const recordsSubtitle = document.getElementById('records-subtitle');
+    if (!CURRENT_USER) {
+        if (recordsSection) recordsSection.style.display = 'none';
+        return;
+    }
+    if (recordsSection) recordsSection.style.display = 'block';
+    if (recordsSubtitle) recordsSubtitle.textContent = '查看您的历史检测记录（' + CURRENT_USER + '）';
+
+    const records = getRecordsFromStorage();
+
+    // 更新统计卡片
+    const recordCountEl = document.getElementById('stat-record-count');
+    if (recordCountEl) recordCountEl.textContent = records.length;
+
+    // 更新记录数量
+    const countSpan = document.getElementById('my-records-count');
+    if (countSpan) countSpan.textContent = '共 ' + records.length + ' 条记录';
+
+    const tableWrapper = document.getElementById('my-records-table-wrapper');
+    const emptyDiv = document.getElementById('my-records-empty');
+    const tbody = document.getElementById('my-records-tbody');
+
+    if (records.length === 0) {
+        if (tableWrapper) tableWrapper.style.display = 'none';
+        if (emptyDiv) emptyDiv.style.display = 'block';
+        return;
+    }
+
+    if (tableWrapper) tableWrapper.style.display = 'block';
+    if (emptyDiv) emptyDiv.style.display = 'none';
+
+    let html = '';
+    records.forEach(function(record) {
+        const isClassify = record.mode === 'classify';
+        const modeLabel = isClassify ? '分类' : '分割';
+        const modeColor = isClassify ? '#0ea5e9' : '#6366f1';
+        const modeBg = isClassify ? 'rgba(14,165,233,0.1)' : 'rgba(99,102,241,0.1)';
+
+        html += '<tr>';
+        html += '<td style="text-align: center;">' + escapeHtml(record.original_name || (isClassify ? '分类检测' : '分割检测')) + '</td>';
+        html += '<td style="text-align: center;">' + escapeHtml(record.time || '-') + '</td>';
+        html += '<td style="text-align: center;"><span style="padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; background: ' + modeBg + '; color: ' + modeColor + ';">' + modeLabel + '</span></td>';
+        html += '<td style="text-align: center;">';
+        html += '<a href="javascript:void(0)" style="color: var(--primary); margin-right: 20px;" onclick="showMyRecordDetail(\'' + record.id + '\')">查看详情</a>';
+        html += '<a href="javascript:void(0)" style="color: #ef4444;" onclick="deleteMyRecord(\'' + record.id + '\')">删除</a>';
+        html += '</td>';
+        html += '</tr>';
+    });
+
+    if (tbody) tbody.innerHTML = html;
+}
+
+// ========== 删除检测记录 ==========
+function deleteMyRecord(id) {
+    if (!confirm('确定要删除这条记录吗？')) return;
+
+    // 尝试从大众模式记录中删除
+    let publicRecords = [];
+    try {
+        const stored = localStorage.getItem(STORAGE_KEYS.records);
+        if (stored) publicRecords = JSON.parse(stored);
+    } catch (e) {}
+    const publicIndex = publicRecords.findIndex(function(r) { return r.id === id; });
+    if (publicIndex >= 0) {
+        publicRecords.splice(publicIndex, 1);
+        try {
+            localStorage.setItem(STORAGE_KEYS.records, JSON.stringify(publicRecords));
+        } catch (e) {}
+        loadMyRecords();
+        return;
+    }
+
+    // 尝试从医生模式记录中删除
+    let doctorRecords = [];
+    try {
+        const stored = localStorage.getItem(STORAGE_KEYS.doctorRecords);
+        if (stored) doctorRecords = JSON.parse(stored);
+    } catch (e) {}
+    const doctorIndex = doctorRecords.findIndex(function(r) { return r.id === id; });
+    if (doctorIndex >= 0) {
+        doctorRecords.splice(doctorIndex, 1);
+        try {
+            localStorage.setItem(STORAGE_KEYS.doctorRecords, JSON.stringify(doctorRecords));
+        } catch (e) {}
+        loadMyRecords();
+        return;
+    }
+}
+
+// ========== 显示记录详情弹窗 ==========
+let currentMyAnalysisRecord = null;
+
+function showMyRecordDetail(id) {
+    const records = getRecordsFromStorage();
+    const record = records.find(function(r) { return r.id === id; });
+    if (!record) {
+        alert('记录不存在');
+        return;
+    }
+
+    // 设置标题
+    const isClassifyDetail = record.mode === 'classify';
+    document.getElementById('myRecordDetailTitle').textContent = '检测记录详情 - ' + (record.original_name || (isClassifyDetail ? '分类检测' : '分割检测'));
+
+    // 设置元信息
+    const metaDiv = document.getElementById('myRecordDetailMeta');
+    let metaHtml = '<div style="font-weight: 600; color: #0369a1; margin-bottom: 8px; font-size: 14px;"><i class="fas fa-file-alt" style="margin-right: 6px;"></i>记录信息</div>';
+    metaHtml += '<div style="font-size: 13px; color: #334155; line-height: 1.8;">';
+    metaHtml += '<div><strong>检测时间：</strong>' + escapeHtml(record.time) + '</div>';
+    metaHtml += '<div><strong>检测模式：</strong>' + (isClassifyDetail ? '图像分类' : '图像分割') + '</div>';
+    metaHtml += '<div><strong>数据集：</strong>' + escapeHtml(record.dataset ? record.dataset.toUpperCase() : '未知') + '</div>';
+    if (record.original_name) metaHtml += '<div><strong>原图名称：</strong>' + escapeHtml(record.original_name) + '</div>';
+    if (record.predict_name) metaHtml += '<div><strong>预测图名称：</strong>' + escapeHtml(record.predict_name) + '</div>';
+    if (record.gold_name) metaHtml += '<div><strong>金标准名称：</strong>' + escapeHtml(record.gold_name) + '</div>';
+    metaHtml += '</div>';
+    metaDiv.innerHTML = metaHtml;
+
+    // 根据模式显示/隐藏对应区域
+    const classifyArea = document.getElementById('my-classification-detail-area');
+    const segmentArea = document.getElementById('my-segmentation-detail-area');
+
+    if (isClassifyDetail) {
+        // 分类模式：显示分类区域，隐藏分割区域
+        classifyArea.style.display = 'block';
+        segmentArea.style.display = 'none';
+
+        // 设置原始图像
+        if (record.original_base64) {
+            document.getElementById('my-detail-original').src = 'data:image/png;base64,' + record.original_base64;
+        } else {
+            document.getElementById('my-detail-original').src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect fill="%23f1f5f9" width="200" height="200"/><text fill="%2394a3b8" x="50%" y="50%" text-anchor="middle" dy=".3em">无数据</text></svg>';
+        }
+
+        // 设置分类结果
+        document.getElementById('my-cls-detail-class-name').textContent = record.class_name || '-';
+        document.getElementById('my-cls-detail-confidence').textContent = record.confidence ? (record.confidence * 100).toFixed(2) + '%' : '-';
+    } else {
+        // 分割模式：隐藏分类区域，显示分割区域
+        classifyArea.style.display = 'none';
+        segmentArea.style.display = 'block';
+
+        // 设置图片
+        if (record.original_base64) {
+            document.getElementById('my-detail-original-seg').src = 'data:image/png;base64,' + record.original_base64;
+        } else {
+            document.getElementById('my-detail-original-seg').src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect fill="%23f1f5f9" width="200" height="200"/><text fill="%2394a3b8" x="50%" y="50%" text-anchor="middle" dy=".3em">无数据</text></svg>';
+        }
+        if (record.predict_base64) {
+            document.getElementById('my-detail-segment').src = 'data:image/png;base64,' + record.predict_base64;
+        } else {
+            document.getElementById('my-detail-segment').src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect fill="%23f1f5f9" width="200" height="200"/><text fill="%2394a3b8" x="50%" y="50%" text-anchor="middle" dy=".3em">无数据</text></svg>';
+        }
+        if (record.gold_base64) {
+            document.getElementById('my-detail-gold').src = 'data:image/png;base64,' + record.gold_base64;
+        } else {
+            document.getElementById('my-detail-gold').src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect fill="%23f1f5f9" width="200" height="200"/><text fill="%2394a3b8" x="50%" y="50%" text-anchor="middle" dy=".3em">无金标准</text></svg>';
+        }
+
+        // 设置指标
+        const metricsDiv = document.getElementById('my-detail-metrics');
+        const metrics = record.metrics || {};
+        const metricLabels = ['accuracy', 'dice', 'iou', 'hd95', 'precision', 'recall'];
+        const metricNames = ['Accuracy', 'Dice', 'IoU', 'HD95', 'Precision', 'Recall'];
+        let metricsHtml = '';
+        for (let i = 0; i < metricLabels.length; i++) {
+            const val = metrics[metricLabels[i]];
+            metricsHtml += '<div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">';
+            metricsHtml += '  <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">' + metricNames[i] + '</div>';
+            metricsHtml += '  <div style="font-size: 18px; font-weight: 700; color: #1e293b;">' + formatMetric(val) + '</div>';
+            metricsHtml += '</div>';
+        }
+        metricsDiv.innerHTML = metricsHtml;
+    }
+
+    // 重置AI分析区域
+    currentMyAnalysisRecord = record;
+    document.getElementById('my-btn-ai-analysis').disabled = false;
+    document.getElementById('my-ai-analysis-loading').style.display = 'none';
+    document.getElementById('my-ai-analysis-result').innerHTML = '';
+
+    // 如果记录中已有AI分析内容，则直接显示
+    if (record.ai_analysis && record.ai_analysis.trim() !== '') {
+        document.getElementById('my-btn-ai-analysis').innerHTML = '<i class="fas fa-magic"></i> 重新分析';
+        document.getElementById('my-ai-analysis-result').style.display = 'block';
+        document.getElementById('my-ai-analysis-result').innerHTML = renderMyAIAnalysisContent(record.ai_analysis);
+        document.getElementById('my-ai-analysis-empty').style.display = 'none';
+    } else {
+        document.getElementById('my-btn-ai-analysis').innerHTML = '<i class="fas fa-magic"></i> 生成AI分析';
+        document.getElementById('my-ai-analysis-result').style.display = 'none';
+        document.getElementById('my-ai-analysis-empty').style.display = 'block';
+        document.getElementById('my-ai-analysis-empty').innerHTML = '<i class="fas fa-robot" style="font-size: 28px; margin-bottom: 8px; display: block; color: #0ea5e9;"></i>点击上方按钮，AI将为您生成专业的检测结果分析报告';
+    }
+
+    // 显示弹窗
+    document.getElementById('myRecordDetailModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+// 关闭记录详情弹窗
+function closeMyRecordDetailModal() {
+    document.getElementById('myRecordDetailModal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+// ========== AI智能分析功能 ==========
+function generateMyAIAnalysis() {
+    if (!currentMyAnalysisRecord) {
+        alert('请先选择检测记录');
+        return;
+    }
+
+    const btn = document.getElementById('my-btn-ai-analysis');
+    const loading = document.getElementById('my-ai-analysis-loading');
+    const resultDiv = document.getElementById('my-ai-analysis-result');
+    const emptyDiv = document.getElementById('my-ai-analysis-empty');
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 分析中...';
+    emptyDiv.style.display = 'none';
+    resultDiv.style.display = 'none';
+    loading.style.display = 'block';
+
+    fetch('/api/record-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ record: currentMyAnalysisRecord })
+    })
+    .then(function(response) { return response.json(); })
+    .then(function(data) {
+        loading.style.display = 'none';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic"></i> 重新分析';
+
+        if (data.success) {
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = renderMyAIAnalysisContent(data.response);
+
+            // 将AI分析结果保存到当前记录中
+            if (currentMyAnalysisRecord) {
+                currentMyAnalysisRecord.ai_analysis = data.response;
+                // 更新localStorage中的记录
+                let publicRecords = [];
+                let doctorRecords = [];
+                try {
+                    const publicStored = localStorage.getItem(STORAGE_KEYS.records);
+                    if (publicStored) publicRecords = JSON.parse(publicStored);
+                } catch (e) {}
+                try {
+                    const doctorStored = localStorage.getItem(STORAGE_KEYS.doctorRecords);
+                    if (doctorStored) doctorRecords = JSON.parse(doctorStored);
+                } catch (e) {}
+
+                const publicIdx = publicRecords.findIndex(function(r) { return r.id === currentMyAnalysisRecord.id; });
+                const doctorIdx = doctorRecords.findIndex(function(r) { return r.id === currentMyAnalysisRecord.id; });
+
+                if (publicIdx >= 0) {
+                    publicRecords[publicIdx].ai_analysis = data.response;
+                    try {
+                        localStorage.setItem(STORAGE_KEYS.records, JSON.stringify(publicRecords));
+                    } catch (e) {}
+                } else if (doctorIdx >= 0) {
+                    doctorRecords[doctorIdx].ai_analysis = data.response;
+                    try {
+                        localStorage.setItem(STORAGE_KEYS.doctorRecords, JSON.stringify(doctorRecords));
+                    } catch (e) {}
+                }
+            }
+        } else {
+            emptyDiv.style.display = 'block';
+            emptyDiv.innerHTML = '<i class="fas fa-exclamation-circle" style="font-size: 28px; margin-bottom: 8px; display: block; color: #ef4444;"></i>分析失败：' + escapeHtml(data.error || '未知错误');
+        }
+    })
+    .catch(function(error) {
+        loading.style.display = 'none';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic"></i> 生成AI分析';
+        emptyDiv.style.display = 'block';
+        emptyDiv.innerHTML = '<i class="fas fa-exclamation-circle" style="font-size: 28px; margin-bottom: 8px; display: block; color: #ef4444;"></i>请求失败：' + escapeHtml(error.message);
+    });
+}
+
+function renderMyAIAnalysisContent(text) {
+    // 将AI返回的纯文本转换为富HTML，增强排版和视觉效果
+
+    // 标题图标映射
+    const titleIcons = {
+        '影像概述': '🔍',
+        '病灶可能性评估': '⚠️',
+        '影像特征描述': '📋',
+        '临床意义分析': '💡',
+        '鉴别诊断建议': '🏥',
+        '患者生活建议': '🌿',
+        '后续医疗建议': '📅',
+        '重要提示': '⚡',
+        '相关医学知识科普': '📚',
+        '检测结果概述': '📊',
+        '有无病灶分析': '🔎',
+        '病灶/病变特征分析': '📐',
+        '分割/分类质量评估': '📈',
+        '临床意义解读': '💊',
+        '对患者的生活建议': '🥗',
+        '后续检查建议': '📋',
+        '风险提示': '⛔',
+        '相关知识科普': '📖'
+    };
+
+    // 获取标题对应的图标
+    function getIconForTitle(title) {
+        for (let key in titleIcons) {
+            if (title.includes(key)) return titleIcons[key];
+        }
+        return '📌';
+    }
+
+    let html = '<div style="line-height: 1.8; color: #334155; font-size: 13px;">';
+
+    // 按段落分割处理
+    const lines = text.split('\n');
+    let inList = false;
+    let listHtml = '';
+
+    for (let i = 0; i < lines.length; i++) {
+        let line = lines[i];
+        let trimmed = line.trim();
+
+        if (!trimmed) {
+            if (inList) {
+                html += listHtml + '</div>';
+                listHtml = '';
+                inList = false;
+            }
+            continue;
+        }
+
+        // 处理一级/二级标题（带数字编号的标题如 "1. 影像概述"）
+        if (/^\d+\.\s+/.test(trimmed) && trimmed.length < 30) {
+            if (inList) {
+                html += listHtml + '</div>';
+                listHtml = '';
+                inList = false;
+            }
+            let titleText = trimmed.replace(/^\d+\.\s+/, '');
+            let icon = getIconForTitle(titleText);
+            html += '<div style="margin: 20px 0 10px 0; padding: 10px 14px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 10px; border-left: 4px solid #0ea5e9;">';
+            html += '<div style="font-size: 15px; font-weight: 700; color: #0369a1;">' + icon + ' ' + escapeHtml(titleText) + '</div>';
+            html += '</div>';
+            continue;
+        }
+
+        // 处理加粗标题行（如 **影像概述** 或 影像概述 后面跟着内容）
+        if (/^\*\*(.+?)\*\*$/.test(trimmed) && trimmed.length < 40) {
+            if (inList) {
+                html += listHtml + '</div>';
+                listHtml = '';
+                inList = false;
+            }
+            let titleText = trimmed.replace(/^\*\*/, '').replace(/\*\*$/, '');
+            let icon = getIconForTitle(titleText);
+            html += '<div style="margin: 20px 0 10px 0; padding: 10px 14px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border-radius: 10px; border-left: 4px solid #0ea5e9;">';
+            html += '<div style="font-size: 15px; font-weight: 700; color: #0369a1;">' + icon + ' ' + escapeHtml(titleText) + '</div>';
+            html += '</div>';
+            continue;
+        }
+
+        // 处理分隔线
+        if (/^---+/.test(trimmed)) {
+            if (inList) {
+                html += listHtml + '</div>';
+                listHtml = '';
+                inList = false;
+            }
+            html += '<div style="margin: 12px 0; text-align: center; color: #cbd5e1;">✦ ✦ ✦</div>';
+            continue;
+        }
+
+        // 处理列表项（以 - 或 * 开头）
+        if (/^\s*[-*]\s+/.test(line)) {
+            if (!inList) {
+                inList = true;
+                listHtml = '<div style="margin: 8px 0; padding: 8px 12px; background: #f8fafc; border-radius: 8px;">';
+            }
+            let content = trimmed.replace(/^\s*[-*]\s+/, '');
+            // 处理加粗
+            content = content.replace(/\*\*(.+?)\*\*/g, function(m, c) {
+                return '<strong style="color: #0369a1;">' + escapeHtml(c) + '</strong>';
+            });
+            listHtml += '<div style="margin: 6px 0 6px 20px; position: relative; color: #475569;"><span style="position: absolute; left: -16px; color: #0ea5e9; font-size: 14px;">▸</span>' + content + '</div>';
+            continue;
+        }
+
+        // 处理数字列表
+        if (/^\s*\d+\.\s+/.test(line) && trimmed.length >= 30) {
+            if (!inList) {
+                inList = true;
+                listHtml = '<div style="margin: 8px 0; padding: 8px 12px; background: #f8fafc; border-radius: 8px;">';
+            }
+            let num = trimmed.match(/^\s*(\d+)\./)[1];
+            let content = trimmed.replace(/^\s*\d+\.\s+/, '');
+            // 处理加粗
+            content = content.replace(/\*\*(.+?)\*\*/g, function(m, c) {
+                return '<strong style="color: #0369a1;">' + escapeHtml(c) + '</strong>';
+            });
+            listHtml += '<div style="margin: 6px 0 6px 24px; position: relative; color: #475569;"><span style="position: absolute; left: -22px; color: #0ea5e9; font-weight: 700; font-size: 13px;">' + num + '.</span>' + content + '</div>';
+            continue;
+        }
+
+        // 普通段落
+        if (inList) {
+            html += listHtml + '</div>';
+            listHtml = '';
+            inList = false;
+        }
+
+        // 处理段落中的加粗
+        let para = trimmed;
+        para = para.replace(/\*\*(.+?)\*\*/g, function(m, c) {
+            return '<strong style="color: #0369a1;">' + escapeHtml(c) + '</strong>';
+        });
+
+        // 处理关键短语的高亮（如"建议"、"注意"、"重要"等）
+        para = para.replace(/(建议|注意|重要|提示|警告|必须|务必)/g, function(m) {
+            return '<span style="color: #dc2626; font-weight: 600;">' + m + '</span>';
+        });
+
+        html += '<p style="margin: 10px 0; text-align: justify;">' + para + '</p>';
+    }
+
+    // 结束未关闭的列表
+    if (inList) {
+        html += listHtml + '</div>';
+    }
+
+    html += '</div>';
+    return html;
+}
+
+// ========== 导出PDF功能 ==========
+function exportMyRecordPDF() {
+    if (!currentMyAnalysisRecord) {
+        alert('暂无记录数据可导出');
+        return;
+    }
+
+    // 检查是否有AI分析结果
+    const aiResultDiv = document.getElementById('my-ai-analysis-result');
+    const hasAIAnalysis = aiResultDiv.style.display !== 'none' && aiResultDiv.innerHTML.trim() !== '';
+
+    if (!hasAIAnalysis) {
+        if (!confirm('尚未生成AI分析报告，导出的PDF将不包含AI分析部分。是否继续导出？')) {
+            return;
+        }
+    }
+
+    // 显示加载提示
+    const btn = document.querySelector('[onclick="exportMyRecordPDF()"]');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 正在生成PDF...';
+
+    // 获取记录数据
+    const record = currentMyAnalysisRecord;
+    const isClassify = record.mode === 'classify';
+    const dataset = (record.dataset || 'unknown').toUpperCase();
+
+    // 获取图片数据 - 使用当前页面中显示的图片src
+    let imagesHtml = '';
+
+    if (isClassify) {
+        // 分类模式：只显示原始图像
+        const originalImg = document.getElementById('my-detail-original');
+        const originalSrc = originalImg && originalImg.src ? originalImg.src : '';
+        if (originalSrc && !originalSrc.includes('无数据')) {
+            imagesHtml += '<div class="image-box"><div class="image-label">原始图像</div><img src="' + originalSrc + '" crossorigin="anonymous" /></div>';
+        }
+    } else {
+        // 分割模式：显示三张图
+        const originalImg = document.getElementById('my-detail-original-seg');
+        const segmentImg = document.getElementById('my-detail-segment');
+        const goldImg = document.getElementById('my-detail-gold');
+
+        const originalSrc = originalImg && originalImg.src ? originalImg.src : '';
+        const segmentSrc = segmentImg && segmentImg.src ? segmentImg.src : '';
+        const goldSrc = goldImg && goldImg.src ? goldImg.src : '';
+
+        if (originalSrc && !originalSrc.includes('无数据')) {
+            imagesHtml += '<div class="image-box"><div class="image-label">原始图像</div><img src="' + originalSrc + '" crossorigin="anonymous" /></div>';
+        }
+        if (segmentSrc && !segmentSrc.includes('无数据') && !segmentSrc.includes('无结果图')) {
+            imagesHtml += '<div class="image-box"><div class="image-label">预测结果</div><img src="' + segmentSrc + '" crossorigin="anonymous" /></div>';
+        }
+        if (goldSrc && !goldSrc.includes('无数据') && !goldSrc.includes('无金标准')) {
+            imagesHtml += '<div class="image-box"><div class="image-label">金标准标注</div><img src="' + goldSrc + '" crossorigin="anonymous" /></div>';
+        }
+    }
+
+    // 获取指标数据
+    let metricsHtml = '';
+    if (isClassify) {
+        metricsHtml = '<div class="metric-item"><span class="metric-name">分类类别</span><span class="metric-value" style="color: #16a34a;">' + escapeHtml(record.class_name || '-') + '</span></div>';
+        metricsHtml += '<div class="metric-item"><span class="metric-name">置信度</span><span class="metric-value">' + (record.confidence ? (record.confidence * 100).toFixed(2) + '%' : '-') + '</span></div>';
+    } else {
+        const metrics = record.metrics || {};
+        const metricLabels = ['accuracy', 'dice', 'iou', 'hd95', 'precision', 'recall'];
+        const metricNames = ['Accuracy', 'Dice', 'IoU', 'HD95', 'Precision', 'Recall'];
+        for (let i = 0; i < metricLabels.length; i++) {
+            const val = metrics[metricLabels[i]];
+            if (val !== undefined && val !== null) {
+                metricsHtml += '<div class="metric-item"><span class="metric-name">' + metricNames[i] + '</span><span class="metric-value">' + formatMetric(val) + '</span></div>';
+            }
+        }
+    }
+
+    // 获取AI分析内容
+    let aiAnalysisHtml = '';
+    if (hasAIAnalysis) {
+        aiAnalysisHtml = aiResultDiv.innerHTML;
+    } else {
+        aiAnalysisHtml = '<p style="color: #94a3b8; text-align: center; padding: 20px;">未生成AI分析报告</p>';
+    }
+
+    // 生成文件名
+    const timestamp = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const fileName = '医学影像检测报告_' + (record.original_name || 'report').replace(/\.[^.]+$/, '') + '_' + timestamp + '.pdf';
+
+    // 构建PDF HTML
+    const pdfHtml = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>医学影像检测报告</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #334155;
+            width: 794px;
+            padding: 40px;
+            background: white;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #0ea5e9;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            color: #0369a1;
+            font-size: 22px;
+            margin: 0 0 8px 0;
+        }
+        .header .subtitle {
+            color: #64748b;
+            font-size: 12px;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #0369a1;
+            background: #f0f9ff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            border-left: 4px solid #0ea5e9;
+            margin-bottom: 12px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 20px;
+            background: #f8fafc;
+            padding: 12px;
+            border-radius: 8px;
+        }
+        .info-item { display: flex; }
+        .info-label { color: #64748b; min-width: 80px; }
+        .info-value { color: #1e293b; font-weight: 500; }
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .image-box {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            text-align: center;
+        }
+        .image-label {
+            background: #f1f5f9;
+            padding: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #475569;
+        }
+        .image-box img {
+            width: 100%;
+            height: 160px;
+            object-fit: contain;
+            display: block;
+        }
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .metric-item {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+        .metric-name {
+            font-size: 11px;
+            color: #64748b;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .metric-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e293b;
+        }
+        .ai-analysis {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 15px;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 11px;
+        }
+        .warning-box {
+            background: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-top: 15px;
+            color: #92400e;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>医学影像检测报告</h1>
+        <div class="subtitle">报告生成时间：${new Date().toLocaleString('zh-CN')}</div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">📋 检测基本信息</div>
+        <div class="info-grid">
+            <div class="info-item">
+                <span class="info-label">检测时间：</span>
+                <span class="info-value">${escapeHtml(record.time || '未知')}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">检测模式：</span>
+                <span class="info-value">${isClassify ? '图像分类' : '图像分割'}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">数据集：</span>
+                <span class="info-value">${dataset}</span>
+            </div>
+            <div class="info-item">
+                <span class="info-label">原图名称：</span>
+                <span class="info-value">${escapeHtml(record.original_name || '未知')}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">🖼️ 影像图像</div>
+        <div class="images-grid">
+            ${imagesHtml}
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">📊 ${isClassify ? '分类结果' : '分割质量指标'}</div>
+        <div class="metrics-grid">
+            ${metricsHtml}
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">🤖 AI智能分析报告</div>
+        <div class="ai-analysis">
+            ${aiAnalysisHtml}
+        </div>
+    </div>
+
+    <div class="warning-box">
+        <strong>⚠️ 重要声明：</strong>本报告由AI辅助分析生成，仅供参考，不能替代专业医生的诊断意见。请携带完整影像资料咨询专业医生，以获取准确的诊断和治疗建议。
+    </div>
+
+    <div class="footer">
+        <p>本报告由医学影像智能检测平台自动生成</p>
+        <p>报告编号：${escapeHtml(record.id || 'N/A')} | 生成时间：${new Date().toLocaleString('zh-CN')}</p>
+    </div>
+</body>
+</html>`;
+
+    // 使用隐藏iframe加载内容，然后通过print下载PDF
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.left = '-9999px';
+    iframe.style.top = '-9999px';
+    iframe.style.width = '794px';
+    iframe.style.height = '1123px';
+    document.body.appendChild(iframe);
+
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+    iframeDoc.open();
+    iframeDoc.write(pdfHtml);
+    iframeDoc.close();
+
+    // 等待图片加载完成后触发打印
+    const images = iframeDoc.querySelectorAll('img');
+    let loadedCount = 0;
+    const totalImages = images.length;
+
+    function triggerDownload() {
+        setTimeout(function() {
+            try {
+                iframe.contentWindow.focus();
+                iframe.contentWindow.print();
+            } catch(e) {
+                // fallback: 打开新窗口
+                const printWindow = window.open('', '_blank');
+                if (printWindow) {
+                    printWindow.document.write(pdfHtml);
+                    printWindow.document.close();
+                    printWindow.print();
+                }
+            }
+            // 恢复按钮
+            setTimeout(function() {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                document.body.removeChild(iframe);
+            }, 1000);
+        }, 500);
+    }
+
+    if (totalImages === 0) {
+        triggerDownload();
+    } else {
+        for (let i = 0; i < totalImages; i++) {
+            if (images[i].complete) {
+                loadedCount++;
+                if (loadedCount === totalImages) triggerDownload();
+            } else {
+                images[i].onload = function() {
+                    loadedCount++;
+                    if (loadedCount === totalImages) triggerDownload();
+                };
+                images[i].onerror = function() {
+                    loadedCount++;
+                    if (loadedCount === totalImages) triggerDownload();
+                };
+            }
+        }
+    }
+}
+
+// ========== 图片放大预览 ==========
+function openMyImagePreview(imgId) {
+    const img = document.getElementById(imgId);
+    if (!img || !img.src) return;
+    const overlay = document.getElementById('myImagePreviewOverlay');
+    const overlayImg = document.getElementById('myOverlayPreviewImg');
+    overlayImg.src = img.src;
+    overlay.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeMyImagePreview() {
+    document.getElementById('myImagePreviewOverlay').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+// ========== 收藏功能 ==========
+let currentFavTab = 'all';
+
+function switchFavTab(tab) {
+    currentFavTab = tab;
+
+    // 更新标签样式
+    document.querySelectorAll('.fav-tab').forEach(el => {
+        el.classList.remove('active');
+    });
+    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+
+    loadFavorites();
+}
+
+function loadFavorites() {
+    const favorites = getFavorites();
+    const container = document.getElementById('favorites-list');
+    const emptyDiv = document.getElementById('favorites-empty');
+
+    // 更新收藏统计
+    const totalFavs = favorites.posts.length + favorites.articles.length;
+    const favCountEl = document.getElementById('stat-fav-count');
+    if (favCountEl) favCountEl.textContent = totalFavs;
+
+    // 根据当前标签筛选
+    let items = [];
+    if (currentFavTab === 'all') {
+        items = [...favorites.posts, ...favorites.articles];
+    } else if (currentFavTab === 'posts') {
+        items = favorites.posts;
+    } else if (currentFavTab === 'articles') {
+        items = favorites.articles;
+    }
+
+    // 按时间排序（最新的在前）
+    items.sort((a, b) => new Date(b.time) - new Date(a.time));
+
+    if (items.length === 0) {
+        container.innerHTML = '';
+        container.style.display = 'none';
+        emptyDiv.style.display = 'block';
+        return;
+    }
+
+    container.style.display = 'block';
+    emptyDiv.style.display = 'none';
+
+    let html = '';
+    items.forEach(item => {
+        let iconClass, iconColor, iconBg;
+        if (item.type === '帖子') {
+            iconClass = 'fa-comments';
+            iconColor = '#f97316';
+            iconBg = 'rgba(249,115,22,0.1)';
+        } else {
+            iconClass = 'fa-book-medical';
+            iconColor = 'var(--primary)';
+            iconBg = 'rgba(99,102,241,0.1)';
+        }
+
+        html += `
+        <div class="record-item" data-fav-id="${item.id}" data-fav-type="${item.type}">
+            <div class="record-icon" style="background: ${iconBg}; color: ${iconColor};">
+                <i class="fas ${iconClass}"></i>
+            </div>
+            <div class="record-info">
+                <div class="record-title">${escapeHtml(item.title)}</div>
+                <div class="record-meta">${item.type} · 收藏于 ${escapeHtml(item.time)}</div>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="removeFavorite('${item.id}', '${item.type}')">取消收藏</button>
+        </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+function removeFavorite(id, type) {
+    const favorites = getFavorites();
+    const key = type === '帖子' ? 'posts' : 'articles';
+    const index = favorites[key].findIndex(f => f.id === id);
+    if (index >= 0) {
+        favorites[key].splice(index, 1);
+        localStorage.setItem(STORAGE_KEYS.favorites, JSON.stringify(favorites));
+        loadFavorites();
+    }
+}
+
+// ESC 关闭
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeMyImagePreview();
+        closeMyRecordDetailModal();
+    }
+});
+
+// 点击弹窗外部关闭
+window.onclick = function(event) {
+    const recordModal = document.getElementById('myRecordDetailModal');
+    if (event.target === recordModal) {
+        closeMyRecordDetailModal();
+    }
+};
+</script>
+
+<style>
+/* 弹窗样式 */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow-lg);
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.modal-header h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.modal-close {
+    font-size: 24px;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.modal-close:hover {
+    color: var(--text-primary);
+}
+
+/* 图片放大预览遮罩 */
+.image-preview-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    cursor: zoom-out;
+}
+
+.image-preview-container {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+}
+
+.image-preview-container img {
+    max-width: 90vw;
+    max-height: 85vh;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.image-preview-close {
+    position: absolute;
+    top: -40px;
+    right: 0;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 6px 14px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 6px;
+    transition: background 0.2s;
+}
+
+.image-preview-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.image-preview-hint {
+    text-align: center;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 12px;
+    margin-top: 12px;
+}
+
+/* 状态徽章扩展 */
+.status-badge.status-muted {
+    background: rgba(100, 116, 139, 0.1);
+    color: #64748b;
+}
+.status-badge.status-danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+/* 收藏标签样式 */
+.fav-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 0 20px 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.fav-tab {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-secondary);
+    transition: all 0.2s;
+}
+
+.fav-tab:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.fav-tab.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* 加载动画 */
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>
+{% endblock %}
