@@ -8,3 +8,4 @@ blinker==1.7.0
 colorama==0.4.6
 requests
 dashscope
+gunicorn
