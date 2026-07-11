@@ -25,44 +25,107 @@ SEGMENT_API_URL = os.getenv('SEGMENT_API_URL', 'http://127.0.0.1:5003/api/segmen
 CLASSIFY_API_URL = os.getenv('CLASSIFY_API_URL', 'http://127.0.0.1:5005/api/classify')
 
 
-def resolve_path(env_val, label=""):
-    """URL则下载解压返回临时目录，本地路径则直接返回"""
-    if env_val and env_val.startswith('http'):
-        print(f"[{label}] 检测到远程地址，正在下载: {env_val}")
-        tmp_dir = tempfile.mkdtemp(prefix=f"{label}_")
-        zip_path = os.path.join(tmp_dir, 'data.zip')
-        try:
-            resp = requests.get(env_val, stream=True, timeout=600)
-            resp.raise_for_status()
-            with open(zip_path, 'wb') as f:
-                for chunk in resp.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            with zipfile.ZipFile(zip_path, 'r') as zf:
-                zf.extractall(tmp_dir)
+def download_and_extract(zip_url, label=""):
+    """从COS下载zip并解压到临时目录，返回解压后的根文件夹"""
+    print(f"[{label}] 正在下载: {zip_url}")
+    tmp_dir = tempfile.mkdtemp(prefix=f"cos_{label}_")
+    zip_path = os.path.join(tmp_dir, 'data.zip')
+    try:
+        resp = requests.get(zip_url, stream=True, timeout=600)
+        resp.raise_for_status()
+        with open(zip_path, 'wb') as f:
+            for chunk in resp.iter_content(chunk_size=8192):
+                f.write(chunk)
+        with zipfile.ZipFile(zip_path, 'r') as zf:
+            zf.extractall(tmp_dir)
+        os.remove(zip_path)
+        print(f"[{label}] 下载解压完成: {tmp_dir}")
+        return tmp_dir
+    except Exception as e:
+        print(f"[{label}] 下载失败: {e}")
+        if os.path.exists(zip_path):
             os.remove(zip_path)
-            print(f"[{label}] 下载解压完成: {tmp_dir}")
-            return tmp_dir
-        except Exception as e:
-            print(f"[{label}] 下载失败: {e}")
-            if os.path.exists(zip_path):
-                os.remove(zip_path)
-            return None
-    return env_val
+        return None
 
 
-# 数据集配置 - 映射数据集名称到原始图像和预测图像目录
-# Railway部署时：环境变量设为腾讯云COS的zip文件URL，自动下载解压
+def find_subdir(base_dir, target_name):
+    """在解压后的目录中递归查找目标子目录"""
+    for root, dirs, files in os.walk(base_dir):
+        if target_name in dirs:
+            return os.path.join(root, target_name)
+    return None
+
+
+def init_dataset_from_cos():
+    """从腾讯云COS下载zip并初始化数据集路径映射"""
+    kits19_zip = os.getenv('COS_KITS19_ZIP', '')
+    lidc_zip = os.getenv('COS_LIDC_ZIP', '')
+    imgout_zip = os.getenv('COS_IMGOUT_ZIP', '')
+
+    if not kits19_zip and not lidc_zip and not imgout_zip:
+        return None
+
+    tmp_dir = tempfile.mkdtemp(prefix="datasets_")
+
+    # 下载并解压 kits19 原图
+    kits19_originals = None
+    if kits19_zip:
+        extracted = download_and_extract(kits19_zip, 'kits19')
+        if extracted:
+            kits19_originals = find_subdir(extracted, 'JPEGImages')
+
+    # 下载并解压 lidc 原图
+    lidc_originals = None
+    if lidc_zip:
+        extracted = download_and_extract(lidc_zip, 'lidc')
+        if extracted:
+            lidc_originals = find_subdir(extracted, 'JPEGImages')
+
+    # 下载并解压预测输出
+    predictions = None
+    if imgout_zip:
+        extracted = download_and_extract(imgout_zip, 'imgout')
+        if extracted:
+            # img_out.zip 解压后直接就是 img_out 文件夹
+            img_out_dir = os.path.join(extracted, 'img_out')
+            if os.path.isdir(img_out_dir):
+                predictions = img_out_dir
+            else:
+                predictions = extracted
+
+    return {
+        'kits19': {
+            'originals': kits19_originals,
+            'predictions': predictions,
+        },
+        'lidc': {
+            'originals': lidc_originals,
+            'predictions': predictions,
+        },
+    }
+
+
+# 数据集配置
+# Railway部署时：通过COS_KITS19_ZIP / COS_LIDC_ZIP / COS_IMGOUT_ZIP环境变量从腾讯云下载
 # 本地开发时：使用默认的本地路径
-DATASET_CONFIG = {
-    'kits19': {
-        'originals': resolve_path(os.getenv('KITS19_ORIGINALS', r'D:\shengwu\using\unet-pytorch\VOCdevkit_kits19\VOC2007\JPEGImages'), 'kits19_originals'),
-        'predictions': resolve_path(os.getenv('KITS19_PREDICTIONS', r'D:\shengwu\using\unet-pytorch\img_out'), 'kits19_predictions'),
-    },
-    'lidc': {
-        'originals': resolve_path(os.getenv('LIDC_ORIGINALS', r'D:\shengwu\using\unet-pytorch\VOCdevkit_lidc_test\VOC2007\JPEGImages'), 'lidc_originals'),
-        'predictions': resolve_path(os.getenv('LIDC_PREDICTIONS', r'D:\shengwu\using\unet-pytorch\img_out'), 'lidc_predictions'),
-    },
-}
+cos_datasets = init_dataset_from_cos()
+
+if cos_datasets:
+    DATASET_CONFIG = cos_datasets
+    print(f"[数据集] 已从COS初始化: kits19 originals={cos_datasets['kits19']['originals']}, predictions={cos_datasets['kits19']['predictions']}")
+    print(f"[数据集] 已从COS初始化: lidc originals={cos_datasets['lidc']['originals']}, predictions={cos_datasets['lidc']['predictions']}")
+else:
+    DATASET_CONFIG = {
+        'kits19': {
+            'originals': r'D:\shengwu\using\unet-pytorch\VOCdevkit_kits19\VOC2007\JPEGImages',
+            'predictions': r'D:\shengwu\using\unet-pytorch\img_out',
+        },
+        'lidc': {
+            'originals': r'D:\shengwu\using\unet-pytorch\VOCdevkit_lidc_test\VOC2007\JPEGImages',
+            'predictions': r'D:\shengwu\using\unet-pytorch\img_out',
+        },
+    }
+    print("[数据集] 使用本地路径")
 
 # ========== 切片浏览器API ==========
 
