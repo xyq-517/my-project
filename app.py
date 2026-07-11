@@ -3,40 +3,17 @@ import hashlib
 import os
 import io
 import requests
+import tempfile
+import zipfile
 import dashscope
 from dashscope import Generation
 from dotenv import load_dotenv
-from PyPDF2 import PdfReader
-import re
-import logging
-import sys
-
-# 配置日志 - 确保在debug模式下也能正常输出
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
-# 清除默认处理器，避免重复输出
-logger.handlers.clear()
-
-# 创建控制台处理器
-stream_handler = logging.StreamHandler(sys.stdout)
-stream_handler.setLevel(logging.INFO)
-
-# 设置日志格式
-formatter = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s')
-stream_handler.setFormatter(formatter)
-
-# 添加处理器
-logger.addHandler(stream_handler)
-
-# 禁止日志传递到根日志处理器，避免重复输出
-logger.propagate = False
 
 # 加载环境变量
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 'medical_detection_platform_secret_key_2024')
+app.secret_key = 'medical_detection_platform_secret_key_2024'
 
 # 配置千问API
 dashscope.api_key = os.getenv('DASHSCOPE_API_KEY', '')
@@ -47,129 +24,45 @@ dashscope.api_key = os.getenv('DASHSCOPE_API_KEY', '')
 SEGMENT_API_URL = os.getenv('SEGMENT_API_URL', 'http://127.0.0.1:5003/api/segment')
 CLASSIFY_API_URL = os.getenv('CLASSIFY_API_URL', 'http://127.0.0.1:5005/api/classify')
 
+
+def resolve_path(env_val, label=""):
+    """URL则下载解压返回临时目录，本地路径则直接返回"""
+    if env_val and env_val.startswith('http'):
+        print(f"[{label}] 检测到远程地址，正在下载: {env_val}")
+        tmp_dir = tempfile.mkdtemp(prefix=f"{label}_")
+        zip_path = os.path.join(tmp_dir, 'data.zip')
+        try:
+            resp = requests.get(env_val, stream=True, timeout=600)
+            resp.raise_for_status()
+            with open(zip_path, 'wb') as f:
+                for chunk in resp.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            with zipfile.ZipFile(zip_path, 'r') as zf:
+                zf.extractall(tmp_dir)
+            os.remove(zip_path)
+            print(f"[{label}] 下载解压完成: {tmp_dir}")
+            return tmp_dir
+        except Exception as e:
+            print(f"[{label}] 下载失败: {e}")
+            if os.path.exists(zip_path):
+                os.remove(zip_path)
+            return None
+    return env_val
+
+
 # 数据集配置 - 映射数据集名称到原始图像和预测图像目录
-# Railway部署时通过环境变量覆盖路径
+# Railway部署时：环境变量设为腾讯云COS的zip文件URL，自动下载解压
+# 本地开发时：使用默认的本地路径
 DATASET_CONFIG = {
     'kits19': {
-        'originals': os.getenv('KITS19_ORIGINALS', r'D:\shengwu\using\unet-pytorch\VOCdevkit_kits19\VOC2007\JPEGImages'),
-        'predictions': os.getenv('KITS19_PREDICTIONS', r'D:\shengwu\using\unet-pytorch\img_out'),
+        'originals': resolve_path(os.getenv('KITS19_ORIGINALS', r'D:\shengwu\using\unet-pytorch\VOCdevkit_kits19\VOC2007\JPEGImages'), 'kits19_originals'),
+        'predictions': resolve_path(os.getenv('KITS19_PREDICTIONS', r'D:\shengwu\using\unet-pytorch\img_out'), 'kits19_predictions'),
     },
     'lidc': {
-        'originals': os.getenv('LIDC_ORIGINALS', r'D:\shengwu\using\unet-pytorch\VOCdevkit_lidc_test\VOC2007\JPEGImages'),
-        'predictions': os.getenv('LIDC_PREDICTIONS', r'D:\shengwu\using\unet-pytorch\img_out'),
+        'originals': resolve_path(os.getenv('LIDC_ORIGINALS', r'D:\shengwu\using\unet-pytorch\VOCdevkit_lidc_test\VOC2007\JPEGImages'), 'lidc_originals'),
+        'predictions': resolve_path(os.getenv('LIDC_PREDICTIONS', r'D:\shengwu\using\unet-pytorch\img_out'), 'lidc_predictions'),
     },
 }
-
-# RAG文档配置 - 使用环境变量指定文档目录
-DOCUMENTS_DIR = os.getenv('DOCUMENTS_DIR', r'D:\shengwu\lung-nodule-app-1\datast')
-
-# ========== RAG文档处理函数 ==========
-
-def extract_text_from_pdf(file_path):
-    try:
-        reader = PdfReader(file_path)
-        text = ""
-        title = ""
-
-        if reader.pages:
-            first_page = reader.pages[0]
-            first_page_text = first_page.extract_text()
-            if first_page_text:
-                lines = first_page_text.split('\n')
-                for line in lines:
-                    line = line.strip()
-                    if line and len(line) < 100:
-                        title = line
-                        break
-
-        for page in reader.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text + "\n\n"
-        return text.strip(), title
-    except Exception as e:
-        logger.error(f"提取PDF文本失败 {file_path}: {e}")
-        return "", ""
-
-def split_text_into_chunks(text, chunk_size=500, chunk_overlap=50):
-    chunks = []
-    text = text.replace('\n', ' ').replace('\r', '')
-    text = re.sub(r'\s+', ' ', text).strip()
-
-    start = 0
-    while start < len(text):
-        end = start + chunk_size
-        chunk = text[start:end]
-        chunks.append(chunk)
-        start += chunk_size - chunk_overlap
-
-    return chunks
-
-def search_relevant_chunks(query, chunks, top_k=3):
-    query = query.lower()
-    scores = []
-
-    for i, chunk in enumerate(chunks):
-        chunk_lower = chunk.lower()
-        score = 0
-
-        for word in query.split():
-            if word in chunk_lower:
-                score += chunk_lower.count(word) * 2
-
-        if score > 0:
-            scores.append((i, score, chunk))
-
-    scores.sort(key=lambda x: x[1], reverse=True)
-    return [chunk for _, _, chunk in scores[:top_k]]
-
-def build_rag_prompt(user_message):
-    documents_text = ""
-    document_info = {}
-
-    if not os.path.isdir(DOCUMENTS_DIR):
-        return None, []
-
-    for filename in os.listdir(DOCUMENTS_DIR):
-        if filename.lower().endswith('.pdf'):
-            file_path = os.path.join(DOCUMENTS_DIR, filename)
-            text, title = extract_text_from_pdf(file_path)
-            if not title:
-                title = filename
-            if text:
-                documents_text += f"【文档: {title}】\n{text}\n\n"
-                document_info[filename] = title
-
-    if not documents_text:
-        return None, []
-
-    chunks = split_text_into_chunks(documents_text)
-    relevant_chunks = search_relevant_chunks(user_message, chunks)
-
-    if not relevant_chunks:
-        return None, []
-
-    context = "\n\n".join(relevant_chunks)
-
-    used_docs = []
-    for chunk in relevant_chunks:
-        for title in document_info.values():
-            if f"【文档: {title}】" in chunk:
-                if title not in used_docs:
-                    used_docs.append(title)
-
-    prompt = f"""你是一个专业的医疗AI助手。请根据以下文档内容回答用户的问题。
-
-参考文档内容：
-{context}
-
-用户问题：{user_message}
-
-回答要求：
-1. 根据文档内容回答问题，确保回答准确。
-2. 回答仅供参考，不能替代专业医生的诊断。"""
-
-    return prompt, used_docs
 
 # ========== 切片浏览器API ==========
 
@@ -187,7 +80,7 @@ def get_patient_slices():
             return jsonify({'success': False, 'error': f'未知数据集: {dataset}'}), 400
 
         pred_dir = DATASET_CONFIG[dataset]['predictions']
-        if not os.path.isdir(pred_dir):
+        if not pred_dir or not os.path.isdir(pred_dir):
             return jsonify({'success': False, 'error': f'预测目录不存在: {pred_dir}'}), 404
 
         pattern = f'case_{patient_id}_'
@@ -604,20 +497,12 @@ def my():
                            user_mode=user_mode)
 
 
-@app.route('/architecture')
-def architecture():
-    return render_template('architecture.html',
-                           page='architecture',
-                           page_title='系统架构图',
-                           nav_items=get_nav_items('architecture'),
-                           user=get_current_user())
 
-
-# ========== AI聊天API（集成RAG功能） ==========
+# ========== AI聊天API ==========
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
-    """AI聊天接口 - 集成RAG功能"""
+    """AI聊天接口"""
     try:
         data = request.get_json()
         user_message = data.get('message', '')
@@ -628,44 +513,35 @@ def chat():
         if not dashscope.api_key:
             return jsonify({'error': 'API Key未配置，请在.env文件中设置DASHSCOPE_API_KEY'}), 500
 
-        rag_prompt, used_docs = build_rag_prompt(user_message)
-
-        if rag_prompt:
-            messages = [
-                {"role": "system",
-                 "content": "你是一个专业的医疗AI助手。请根据提供的参考文档内容回答用户的问题。"},
-                {"role": "user", "content": rag_prompt}
-            ]
-        else:
-            messages = [
-                {"role": "system",
-                 "content": "你是一个专业的医疗AI助手，可以回答医疗健康相关的问题。请注意：你的回答仅供参考，不能替代专业医生的诊断。如果用户有严重症状，请建议他们及时就医。"},
-                {"role": "user", "content": user_message}
-            ]
-            used_docs = []
+        messages = [
+            {"role": "system",
+             "content": "你是一个专业的医疗AI助手，可以回答医疗健康相关的问题。请注意：你的回答仅供参考，不能替代专业医生的诊断。如果用户有严重症状，请建议他们及时就医。"},
+            {"role": "user", "content": user_message}
+        ]
 
         response = Generation.call(
             model='qwen-turbo',
             messages=messages
         )
 
-        logger.info(f"Response status: {response.status_code}")
+        print(f"Response status: {response.status_code}")
+        print(f"Response output: {response.output}")
+        print(f"Response output type: {type(response.output)}")
 
         if response.status_code == 200:
             if response.output:
+                print(f"Output attributes: {dir(response.output)}")
                 if hasattr(response.output, 'text'):
                     ai_response = response.output.text
                     return jsonify({
                         'success': True,
-                        'response': ai_response,
-                        'used_docs': used_docs
+                        'response': ai_response
                     })
                 elif hasattr(response.output, 'choices') and response.output.choices:
                     ai_response = response.output.choices[0].message.content
                     return jsonify({
                         'success': True,
-                        'response': ai_response,
-                        'used_docs': used_docs
+                        'response': ai_response
                     })
                 else:
                     return jsonify({
@@ -694,18 +570,11 @@ def chat():
 def segment_image():
     """图像分割代理接口 - 转发到后端分割服务"""
     try:
-        logger.info(f"\n{'='*60}")
-        logger.info(f"[SEGMENT] 收到分割请求")
-        logger.info(f"[SEGMENT] 请求方法: {request.method}")
-        logger.info(f"[SEGMENT] 请求内容类型: {request.content_type}")
-
         if 'file' not in request.files:
-            logger.info(f"[SEGMENT] 错误: 未上传文件")
             return jsonify({'success': False, 'error': '未上传文件'}), 400
 
         file = request.files['file']
         if file.filename == '':
-            logger.info(f"[SEGMENT] 错误: 文件名不能为空")
             return jsonify({'success': False, 'error': '文件名不能为空'}), 400
 
         # 将文件读取到内存
@@ -713,46 +582,36 @@ def segment_image():
 
         # 计算MD5哈希值
         image_hash = hashlib.md5(file_content).hexdigest()
-        logger.info(f"[SEGMENT] 文件名: {file.filename}")
-        logger.info(f"[SEGMENT] 文件大小: {len(file_content)} bytes")
-        logger.info(f"[SEGMENT] MD5哈希: {image_hash}")
-        logger.info(f"[SEGMENT] 文件类型: {file.content_type}")
+        print(f"\n[前端] 收到分割请求")
+        print(f"[前端] 文件名: {file.filename}")
+        print(f"[前端] MD5哈希: {image_hash}")
 
         # 转发到后端分割服务
-        logger.info(f"[SEGMENT] 转发到分割服务: {SEGMENT_API_URL}")
         files = {'file': (file.filename, io.BytesIO(file_content), file.content_type or 'image/jpeg')}
         response = requests.post(SEGMENT_API_URL, files=files, timeout=120)
 
-        logger.info(f"[SEGMENT] 分割服务响应状态: {response.status_code}")
         if response.status_code == 200:
             result = response.json()
             # 将哈希值添加到返回结果中
             result['image_hash'] = image_hash
-            logger.info(f"[SEGMENT] 分割成功，数据集: {result.get('dataset', 'unknown')}")
+            print(f"[前端] 分割成功，数据集: {result.get('dataset', 'unknown')}")
             if result.get('original_name'):
-                logger.info(f"[SEGMENT] 匹配原图: {result['original_name']}")
-            logger.info(f"[SEGMENT] {'='*60}")
+                print(f"[前端] 匹配原图: {result['original_name']}")
             return jsonify(result)
         else:
-            logger.info(f"[SEGMENT] 错误: 分割服务错误 {response.status_code}")
-            logger.info(f"[SEGMENT] {'='*60}")
             return jsonify({
                 'success': False,
                 'error': f'分割服务错误: {response.status_code}'
             }), 500
 
     except requests.exceptions.ConnectionError:
-        logger.info(f"[SEGMENT] 错误: 无法连接到分割服务 {SEGMENT_API_URL}")
-        logger.info(f"[SEGMENT] {'='*60}")
         return jsonify({
             'success': False,
-            'error': '无法连接到分割服务，请确认后端服务已启动'
+            'error': '无法连接到分割服务，请确认后端服务已启动 (python api_web_final.py)'
         }), 503
     except Exception as e:
         import traceback
-        logger.info(f"[SEGMENT] 错误: {str(e)}")
         traceback.print_exc()
-        logger.info(f"[SEGMENT] {'='*60}")
         return jsonify({
             'success': False,
             'error': f'服务器错误: {str(e)}'
@@ -765,59 +624,41 @@ def segment_image():
 def classify_image():
     """图像分类代理接口 - 转发到后端分类服务"""
     try:
-        logger.info(f"\n{'='*60}")
-        logger.info(f"[CLASSIFY] 收到分类请求")
-        logger.info(f"[CLASSIFY] 请求方法: {request.method}")
-        logger.info(f"[CLASSIFY] 请求内容类型: {request.content_type}")
-
         if 'file' not in request.files:
-            logger.info(f"[CLASSIFY] 错误: 未上传文件")
             return jsonify({'success': False, 'error': '未上传文件'}), 400
 
         file = request.files['file']
         if file.filename == '':
-            logger.info(f"[CLASSIFY] 错误: 文件名不能为空")
             return jsonify({'success': False, 'error': '文件名不能为空'}), 400
 
         file_content = file.read()
         image_hash = hashlib.md5(file_content).hexdigest()
-        logger.info(f"[CLASSIFY] 文件名: {file.filename}")
-        logger.info(f"[CLASSIFY] 文件大小: {len(file_content)} bytes")
-        logger.info(f"[CLASSIFY] MD5哈希: {image_hash}")
-        logger.info(f"[CLASSIFY] 文件类型: {file.content_type}")
+        print(f"\n[前端] 收到分类请求")
+        print(f"[前端] 文件名: {file.filename}")
+        print(f"[前端] MD5哈希: {image_hash}")
 
-        logger.info(f"[CLASSIFY] 转发到分类服务: {CLASSIFY_API_URL}")
         files = {'file': (file.filename, io.BytesIO(file_content), file.content_type or 'image/jpeg')}
         response = requests.post(CLASSIFY_API_URL, files=files, timeout=120)
 
-        logger.info(f"[CLASSIFY] 分类服务响应状态: {response.status_code}")
         if response.status_code == 200:
             result = response.json()
             result['image_hash'] = image_hash
-            logger.info(f"[CLASSIFY] 分类成功，类别: {result.get('class_name', 'unknown')}")
-            logger.info(f"[CLASSIFY] 匹配方式: {result.get('match_type', 'unknown')}")
-            logger.info(f"[CLASSIFY] {'='*60}")
+            print(f"[前端] 分类成功，类别: {result.get('class_name', 'unknown')}")
             return jsonify(result)
         else:
-            logger.info(f"[CLASSIFY] 错误: 分类服务错误 {response.status_code}")
-            logger.info(f"[CLASSIFY] {'='*60}")
             return jsonify({
                 'success': False,
                 'error': f'分类服务错误: {response.status_code}'
             }), 500
 
     except requests.exceptions.ConnectionError:
-        logger.info(f"[CLASSIFY] 错误: 无法连接到分类服务 {CLASSIFY_API_URL}")
-        logger.info(f"[CLASSIFY] {'='*60}")
         return jsonify({
             'success': False,
             'error': '无法连接到分类服务，请确认后端分类服务已启动'
         }), 503
     except Exception as e:
         import traceback
-        logger.info(f"[CLASSIFY] 错误: {str(e)}")
         traceback.print_exc()
-        logger.info(f"[CLASSIFY] {'='*60}")
         return jsonify({
             'success': False,
             'error': f'服务器错误: {str(e)}'
@@ -1272,9 +1113,5 @@ def build_record_analysis_prompt(record):
     return prompt
 
 
-# ========== 启动配置（适配Railway部署） ==========
 if __name__ == '__main__':
-    # Railway通过环境变量PORT指定端口，本地开发默认5000
-    port = int(os.getenv('PORT', 5000))
-    debug = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
-    app.run(debug=debug, host='0.0.0.0', port=port)
+    app.run(debug=True, host='0.0.0.0', port=5000)
