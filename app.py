@@ -140,21 +140,9 @@ def get_slice_image():
 
         filename = f'case_{patient_id}_{slice_num}.jpg'
 
-        # COS模式：302重定向到COS图片URL，前端无需任何改动
+        # COS模式：直接302重定向到COS图片URL，不做任何HEAD检查（避免超时）
         if is_cos_mode():
             cos_url = f'{img_dir}/{filename}'
-            # 检查jpg是否存在，不存在尝试png
-            try:
-                resp = requests.head(cos_url, timeout=5)
-                if resp.status_code != 200:
-                    cos_url_png = f'{img_dir}/case_{patient_id}_{slice_num}.png'
-                    resp2 = requests.head(cos_url_png, timeout=5)
-                    if resp2.status_code == 200:
-                        return redirect(cos_url_png, code=302)
-                    return jsonify({'error': '图像文件不存在'}), 404
-            except:
-                cos_url_png = f'{img_dir}/case_{patient_id}_{slice_num}.png'
-                return redirect(cos_url_png, code=302)
             return redirect(cos_url, code=302)
 
         # 本地模式：直接读取文件返回
