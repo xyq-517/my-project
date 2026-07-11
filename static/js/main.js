@@ -1,5 +1,5 @@
 /**
- * 听悟医疗 - 主交互脚本
+ * 主交互脚本
  */
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -76,7 +76,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const uploadAreas = document.querySelectorAll('.upload-area');
     uploadAreas.forEach(area => {
         // 如果上传区域已经有 onclick 属性或特定 ID，跳过（避免覆盖自定义功能）
-            // 模拟文件选择
+        if (area.getAttribute('onclick') || area.id) {
+            return;
+        }
+        // 模拟文件选择
+        area.addEventListener('click', function() {
             alert('点击上传功能 - 实际项目中会打开文件选择对话框');
         });
     });
@@ -228,7 +232,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.addEventListener('resize', handleResize);
     handleResize(); // 初始化
 
-    console.log('听悟医疗平台已加载完成');
+    console.log('平台已加载完成');
 });
 
 /**
