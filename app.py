@@ -3,8 +3,6 @@ import hashlib
 import os
 import io
 import requests
-import tempfile
-import zipfile
 import dashscope
 from dashscope import Generation
 from dotenv import load_dotenv
@@ -25,107 +23,39 @@ SEGMENT_API_URL = os.getenv('SEGMENT_API_URL', 'http://127.0.0.1:5003/api/segmen
 CLASSIFY_API_URL = os.getenv('CLASSIFY_API_URL', 'http://127.0.0.1:5005/api/classify')
 
 
-def download_and_extract(zip_url, label=""):
-    """从COS下载zip并解压到临时目录，返回解压后的根文件夹"""
-    print(f"[{label}] 正在下载: {zip_url}")
-    tmp_dir = tempfile.mkdtemp(prefix=f"cos_{label}_")
-    zip_path = os.path.join(tmp_dir, 'data.zip')
-    try:
-        resp = requests.get(zip_url, stream=True, timeout=600)
-        resp.raise_for_status()
-        with open(zip_path, 'wb') as f:
-            for chunk in resp.iter_content(chunk_size=8192):
-                f.write(chunk)
-        with zipfile.ZipFile(zip_path, 'r') as zf:
-            zf.extractall(tmp_dir)
-        os.remove(zip_path)
-        print(f"[{label}] 下载解压完成: {tmp_dir}")
-        return tmp_dir
-    except Exception as e:
-        print(f"[{label}] 下载失败: {e}")
-        if os.path.exists(zip_path):
-            os.remove(zip_path)
-        return None
-
-
-def find_subdir(base_dir, target_name):
-    """在解压后的目录中递归查找目标子目录"""
-    for root, dirs, files in os.walk(base_dir):
-        if target_name in dirs:
-            return os.path.join(root, target_name)
-    return None
-
-
-def init_dataset_from_cos():
-    """从腾讯云COS下载zip并初始化数据集路径映射"""
-    kits19_zip = os.getenv('COS_KITS19_ZIP', '')
-    lidc_zip = os.getenv('COS_LIDC_ZIP', '')
-    imgout_zip = os.getenv('COS_IMGOUT_ZIP', '')
-
-    if not kits19_zip and not lidc_zip and not imgout_zip:
-        return None
-
-    tmp_dir = tempfile.mkdtemp(prefix="datasets_")
-
-    # 下载并解压 kits19 原图
-    kits19_originals = None
-    if kits19_zip:
-        extracted = download_and_extract(kits19_zip, 'kits19')
-        if extracted:
-            kits19_originals = find_subdir(extracted, 'JPEGImages')
-
-    # 下载并解压 lidc 原图
-    lidc_originals = None
-    if lidc_zip:
-        extracted = download_and_extract(lidc_zip, 'lidc')
-        if extracted:
-            lidc_originals = find_subdir(extracted, 'JPEGImages')
-
-    # 下载并解压预测输出
-    predictions = None
-    if imgout_zip:
-        extracted = download_and_extract(imgout_zip, 'imgout')
-        if extracted:
-            # img_out.zip 解压后直接就是 img_out 文件夹
-            img_out_dir = os.path.join(extracted, 'img_out')
-            if os.path.isdir(img_out_dir):
-                predictions = img_out_dir
-            else:
-                predictions = extracted
-
-    return {
-        'kits19': {
-            'originals': kits19_originals,
-            'predictions': predictions,
-        },
-        'lidc': {
-            'originals': lidc_originals,
-            'predictions': predictions,
-        },
-    }
-
-
 # 数据集配置
-# Railway部署时：通过COS_KITS19_ZIP / COS_LIDC_ZIP / COS_IMGOUT_ZIP环境变量从腾讯云下载
-# 本地开发时：使用默认的本地路径
-cos_datasets = init_dataset_from_cos()
+# Railway部署时：COS_BASE_URL指向腾讯云COS存储桶根地址，图片直接从COS加载
+# 本地开发时：使用默认的本地路径（COS_BASE_URL为空）
+COS_BASE_URL = os.getenv('COS_BASE_URL', '').rstrip('/')
 
-if cos_datasets:
-    DATASET_CONFIG = cos_datasets
-    print(f"[数据集] 已从COS初始化: kits19 originals={cos_datasets['kits19']['originals']}, predictions={cos_datasets['kits19']['predictions']}")
-    print(f"[数据集] 已从COS初始化: lidc originals={cos_datasets['lidc']['originals']}, predictions={cos_datasets['lidc']['predictions']}")
-else:
-    DATASET_CONFIG = {
-        'kits19': {
-            'originals': r'D:\shengwu\using\unet-pytorch\VOCdevkit_kits19\VOC2007\JPEGImages',
-            'predictions': r'D:\shengwu\using\unet-pytorch\img_out',
-        },
-        'lidc': {
-            'originals': r'D:\shengwu\using\unet-pytorch\VOCdevkit_lidc_test\VOC2007\JPEGImages',
-            'predictions': r'D:\shengwu\using\unet-pytorch\img_out',
-        },
+DATASET_CONFIG = {
+    'kits19': {
+        'originals_path': 'VOCdevkit_kits19/VOC2007/JPEGImages',
+        'predictions_path': 'img_out',
+    },
+    'lidc': {
+        'originals_path': 'VOCdevkit_lidc_test/VOC2007/JPEGImages',
+        'predictions_path': 'img_out',
+    },
+}
+
+def get_dataset_dir(dataset, file_type):
+    """获取数据集目录路径（本地路径或COS URL前缀）"""
+    path_key = f'{file_type}_path'
+    sub_path = DATASET_CONFIG[dataset][path_key]
+    if COS_BASE_URL:
+        return f'{COS_BASE_URL}/{sub_path}'
+    local_paths = {
+        ('kits19', 'originals'): r'D:\shengwu\using\unet-pytorch\VOCdevkit_kits19\VOC2007\JPEGImages',
+        ('kits19', 'predictions'): r'D:\shengwu\using\unet-pytorch\img_out',
+        ('lidc', 'originals'): r'D:\shengwu\using\unet-pytorch\VOCdevkit_lidc_test\VOC2007\JPEGImages',
+        ('lidc', 'predictions'): r'D:\shengwu\using\unet-pytorch\img_out',
     }
-    print("[数据集] 使用本地路径")
+    return local_paths.get((dataset, file_type), sub_path)
+
+def is_cos_mode():
+    """是否为COS模式（部署在Railway时为True）"""
+    return bool(COS_BASE_URL)
 
 # ========== 切片浏览器API ==========
 
@@ -142,21 +72,29 @@ def get_patient_slices():
         if dataset not in DATASET_CONFIG:
             return jsonify({'success': False, 'error': f'未知数据集: {dataset}'}), 400
 
-        pred_dir = DATASET_CONFIG[dataset]['predictions']
-        if not pred_dir or not os.path.isdir(pred_dir):
-            return jsonify({'success': False, 'error': f'预测目录不存在: {pred_dir}'}), 404
+        # COS模式：通过COS API列出文件；本地模式：扫描本地目录
+        cos_mode = is_cos_mode()
+        pred_dir = get_dataset_dir(dataset, 'predictions')
 
-        pattern = f'case_{patient_id}_'
         slices = []
-        for filename in os.listdir(pred_dir):
-            if filename.startswith(pattern) and filename.lower().endswith(('.jpg', '.jpeg', '.png')):
-                parts = filename.replace(pattern, '').split('.')
-                slice_num = parts[0]
-                slices.append({
-                    'index': len(slices),
-                    'filename': filename,
-                    'slice_num': slice_num,
-                })
+        if cos_mode:
+            # COS模式：无法列出目录，返回提示让前端用已知切片号范围
+            # 切片浏览器会在前端通过 onSliceChange 动态构建URL加载图片
+            slices = get_patient_slices_from_cos(patient_id, dataset)
+        else:
+            if not os.path.isdir(pred_dir):
+                return jsonify({'success': False, 'error': f'预测目录不存在: {pred_dir}'}), 404
+
+            pattern = f'case_{patient_id}_'
+            for filename in os.listdir(pred_dir):
+                if filename.startswith(pattern) and filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+                    parts = filename.replace(pattern, '').split('.')
+                    slice_num = parts[0]
+                    slices.append({
+                        'index': len(slices),
+                        'filename': filename,
+                        'slice_num': slice_num,
+                    })
 
         slices.sort(key=lambda x: int(x['slice_num']) if x['slice_num'].isdigit() else 0)
 
@@ -166,12 +104,52 @@ def get_patient_slices():
             'dataset': dataset,
             'total': len(slices),
             'slices': slices,
+            'cos_mode': cos_mode,
+            'cos_base_url': COS_BASE_URL if cos_mode else '',
         })
 
     except Exception as e:
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': f'服务器错误: {str(e)}'}), 500
+
+
+def get_patient_slices_from_cos(patient_id, dataset):
+    """从COS获取患者的切片列表（遍历常见切片编号）"""
+    slices = []
+    # 尝试遍历0-500的切片编号，通过HEAD请求检查文件是否存在
+    import concurrent.futures
+
+    def check_slice(slice_num):
+        filename = f'case_{patient_id}_{slice_num}.jpg'
+        cos_url = f'{COS_BASE_URL}/{DATASET_CONFIG[dataset]["predictions_path"]}/{filename}'
+        try:
+            resp = requests.head(cos_url, timeout=5)
+            if resp.status_code == 200:
+                return {'index': 0, 'filename': filename, 'slice_num': str(slice_num)}
+        except:
+            pass
+        # 也尝试 .png
+        filename_png = f'case_{patient_id}_{slice_num}.png'
+        cos_url_png = f'{COS_BASE_URL}/{DATASET_CONFIG[dataset]["predictions_path"]}/{filename_png}'
+        try:
+            resp = requests.head(cos_url_png, timeout=5)
+            if resp.status_code == 200:
+                return {'index': 0, 'filename': filename_png, 'slice_num': str(slice_num)}
+        except:
+            pass
+        return None
+
+    # 并发检查，最多检查500个切片
+    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        futures = {executor.submit(check_slice, i): i for i in range(500)}
+        for future in concurrent.futures.as_completed(futures):
+            result = future.result()
+            if result:
+                result['index'] = len(slices)
+                slices.append(result)
+
+    return slices
 
 
 @app.route('/api/slice-image', methods=['GET'])
@@ -189,12 +167,29 @@ def get_slice_image():
         if dataset not in DATASET_CONFIG:
             return jsonify({'error': f'未知数据集: {dataset}'}), 400
 
-        if img_type == 'original':
-            img_dir = DATASET_CONFIG[dataset]['originals']
-        else:
-            img_dir = DATASET_CONFIG[dataset]['predictions']
+        file_type = 'originals' if img_type == 'original' else 'predictions'
+        img_dir = get_dataset_dir(dataset, file_type)
 
         filename = f'case_{patient_id}_{slice_num}.jpg'
+
+        # COS模式：302重定向到COS图片URL，前端无需任何改动
+        if is_cos_mode():
+            cos_url = f'{img_dir}/{filename}'
+            # 检查jpg是否存在，不存在尝试png
+            try:
+                resp = requests.head(cos_url, timeout=5)
+                if resp.status_code != 200:
+                    cos_url_png = f'{img_dir}/case_{patient_id}_{slice_num}.png'
+                    resp2 = requests.head(cos_url_png, timeout=5)
+                    if resp2.status_code == 200:
+                        return redirect(cos_url_png, code=302)
+                    return jsonify({'error': '图像文件不存在'}), 404
+            except:
+                cos_url_png = f'{img_dir}/case_{patient_id}_{slice_num}.png'
+                return redirect(cos_url_png, code=302)
+            return redirect(cos_url, code=302)
+
+        # 本地模式：直接读取文件返回
         filepath = os.path.join(img_dir, filename)
 
         if not os.path.isfile(filepath):
