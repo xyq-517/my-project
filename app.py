@@ -78,9 +78,15 @@ def get_patient_slices():
 
         slices = []
         if cos_mode:
-            # COS模式：无法列出目录，返回提示让前端用已知切片号范围
-            # 切片浏览器会在前端通过 onSliceChange 动态构建URL加载图片
-            slices = get_patient_slices_from_cos(patient_id, dataset)
+            # COS模式：直接返回切片编号范围，不逐个探测（避免超时）
+            # 实际不存在的切片加载时会显示空白，不影响使用
+            max_slice = 200
+            for i in range(max_slice):
+                slices.append({
+                    'index': i,
+                    'filename': f'case_{patient_id}_{i}.jpg',
+                    'slice_num': str(i),
+                })
         else:
             if not os.path.isdir(pred_dir):
                 return jsonify({'success': False, 'error': f'预测目录不存在: {pred_dir}'}), 404
@@ -112,44 +118,6 @@ def get_patient_slices():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': f'服务器错误: {str(e)}'}), 500
-
-
-def get_patient_slices_from_cos(patient_id, dataset):
-    """从COS获取患者的切片列表（遍历常见切片编号）"""
-    slices = []
-    # 尝试遍历0-500的切片编号，通过HEAD请求检查文件是否存在
-    import concurrent.futures
-
-    def check_slice(slice_num):
-        filename = f'case_{patient_id}_{slice_num}.jpg'
-        cos_url = f'{COS_BASE_URL}/{DATASET_CONFIG[dataset]["predictions_path"]}/{filename}'
-        try:
-            resp = requests.head(cos_url, timeout=5)
-            if resp.status_code == 200:
-                return {'index': 0, 'filename': filename, 'slice_num': str(slice_num)}
-        except:
-            pass
-        # 也尝试 .png
-        filename_png = f'case_{patient_id}_{slice_num}.png'
-        cos_url_png = f'{COS_BASE_URL}/{DATASET_CONFIG[dataset]["predictions_path"]}/{filename_png}'
-        try:
-            resp = requests.head(cos_url_png, timeout=5)
-            if resp.status_code == 200:
-                return {'index': 0, 'filename': filename_png, 'slice_num': str(slice_num)}
-        except:
-            pass
-        return None
-
-    # 并发检查，最多检查500个切片
-    with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
-        futures = {executor.submit(check_slice, i): i for i in range(500)}
-        for future in concurrent.futures.as_completed(futures):
-            result = future.result()
-            if result:
-                result['index'] = len(slices)
-                slices.append(result)
-
-    return slices
 
 
 @app.route('/api/slice-image', methods=['GET'])
