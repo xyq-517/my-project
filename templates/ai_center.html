@@ -193,6 +193,7 @@ const chatInput = document.getElementById('chat-input');
 const chatSendBtn = document.getElementById('chat-send-btn');
 const presetQuestionsArea = document.getElementById('preset-questions-area');
 const serverAiMode = '{{ ai_center_mode }}';
+const CHAT_STORAGE_KEY = 'ai_center_chat_history';
 
 function isDoctorMode() {
     const params = new URLSearchParams(window.location.search);
@@ -224,8 +225,12 @@ function applyPresetQuestionVisibility() {
 }
 
 applyPresetQuestionVisibility();
+loadChatHistory();
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', applyPresetQuestionVisibility);
+    document.addEventListener('DOMContentLoaded', function() {
+        applyPresetQuestionVisibility();
+        loadChatHistory();
+    });
 }
 
 
@@ -245,6 +250,52 @@ function onModelChange() {
     const modelSelect = document.getElementById('model-select');
     const modelName = modelSelect.options[modelSelect.selectedIndex].text;
     addSystemMessage('已切换到 ' + modelName + ' 模型');
+}
+
+function saveChatHistory(message, response, usedDocs) {
+    try {
+        const history = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || '[]');
+        history.push({
+            message: message,
+            response: response,
+            usedDocs: usedDocs || [],
+            timestamp: new Date().toISOString()
+        });
+        localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(history));
+    } catch (e) {
+        console.error('保存聊天历史失败:', e);
+    }
+}
+
+function loadChatHistory() {
+    try {
+        const history = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || '[]');
+        if (history.length === 0) return;
+        
+        chatMessages.innerHTML = '';
+        
+        const welcomeHtml = `
+            <div class="chat-message ai-message">
+                <div class="chat-avatar ai-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="chat-bubble ai-bubble">
+                    <div class="chat-text">您好！我是您的智能医疗助手。我可以帮您解答医疗健康问题、解读检测报告、提供疾病知识咨询等。请问有什么可以帮您的？</div>
+                    <div class="chat-time">刚刚</div>
+                </div>
+            </div>
+        `;
+        chatMessages.insertAdjacentHTML('beforeend', welcomeHtml);
+        
+        history.forEach(function(item) {
+            addUserMessage(item.message);
+            addAiMessage(item.response, item.usedDocs);
+        });
+        
+        scrollToBottom();
+    } catch (e) {
+        console.error('加载聊天历史失败:', e);
+    }
 }
 
 function addSystemMessage(text) {
@@ -292,8 +343,10 @@ function sendChatMessage() {
         if (data.success && data.response) {
             var usedDocs = data.used_docs || [];
             addAiMessage(data.response, usedDocs);
+            saveChatHistory(message, data.response, usedDocs);
         } else if (data.reply) {
             addAiMessage(data.reply);
+            saveChatHistory(message, data.reply, []);
         } else if (data.error) {
             addAiMessage('提示：' + data.error);
         } else {
@@ -394,6 +447,7 @@ function escapeHtml(text) {
 
 function clearChat() {
     if (!confirm('确定要清空所有对话吗？')) return;
+    localStorage.removeItem(CHAT_STORAGE_KEY);
     chatMessages.innerHTML = `
         <div class="chat-message ai-message">
             <div class="chat-avatar ai-avatar">
