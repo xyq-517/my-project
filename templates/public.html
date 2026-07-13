@@ -121,6 +121,45 @@
     </div>
 </div>
 
+<!-- ==================== 器官选择弹窗 ==================== -->
+<div id="organSelectModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 500px; width: 92%;">
+        <div class="modal-header">
+            <h3>选择器官</h3>
+            <span class="modal-close" onclick="closeOrganSelectModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p style="font-size: 14px; color: #64748b; margin-bottom: 16px;">请选择要检测的器官类型：</p>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                <div class="organ-option" id="organ-kidney" onclick="highlightOrgan('kidney')" style="cursor: pointer; border: 2px solid #e2e8f0; border-radius: 12px; padding: 18px; text-align: center; transition: all 0.2s;" onmouseover="this.style.borderColor='#6366f1';this.style.background='#f5f3ff'" onmouseout="if(this.dataset.selected!=='true'){this.style.borderColor='#e2e8f0';this.style.background='white'}">
+                    <div style="font-weight: 600; color: #1e293b; font-size: 15px;">肾脏</div>
+                    <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Kidney</div>
+                </div>
+                <div class="organ-option" id="organ-spleen" onclick="highlightOrgan('spleen')" style="cursor: pointer; border: 2px solid #e2e8f0; border-radius: 12px; padding: 18px; text-align: center; transition: all 0.2s;" onmouseover="this.style.borderColor='#6366f1';this.style.background='#f5f3ff'" onmouseout="if(this.dataset.selected!=='true'){this.style.borderColor='#e2e8f0';this.style.background='white'}">
+                    <div style="font-weight: 600; color: #1e293b; font-size: 15px;">脾脏</div>
+                    <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Spleen</div>
+                </div>
+                <div class="organ-option" id="organ-pancreas" onclick="highlightOrgan('pancreas')" style="cursor: pointer; border: 2px solid #e2e8f0; border-radius: 12px; padding: 18px; text-align: center; transition: all 0.2s;" onmouseover="this.style.borderColor='#6366f1';this.style.background='#f5f3ff'" onmouseout="if(this.dataset.selected!=='true'){this.style.borderColor='#e2e8f0';this.style.background='white'}">
+                    <div style="font-weight: 600; color: #1e293b; font-size: 15px;">胰腺</div>
+                    <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Pancreas</div>
+                </div>
+                <div class="organ-option" id="organ-lung" onclick="highlightOrgan('lung')" style="cursor: pointer; border: 2px solid #e2e8f0; border-radius: 12px; padding: 18px; text-align: center; transition: all 0.2s;" onmouseover="this.style.borderColor='#6366f1';this.style.background='#f5f3ff'" onmouseout="if(this.dataset.selected!=='true'){this.style.borderColor='#e2e8f0';this.style.background='white'}">
+                    <div style="font-weight: 600; color: #1e293b; font-size: 15px;">肺部</div>
+                    <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Lung</div>
+                </div>
+                <div class="organ-option" id="organ-liver" onclick="highlightOrgan('liver')" style="cursor: pointer; border: 2px solid #e2e8f0; border-radius: 12px; padding: 18px; text-align: center; transition: all 0.2s;" onmouseover="this.style.borderColor='#6366f1';this.style.background='#f5f3ff'" onmouseout="if(this.dataset.selected!=='true'){this.style.borderColor='#e2e8f0';this.style.background='white'}">
+                    <div style="font-weight: 600; color: #1e293b; font-size: 15px;">肝脏</div>
+                    <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">Liver</div>
+                </div>
+            </div>
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                <button class="btn btn-outline" onclick="closeOrganSelectModal()">取消</button>
+                <button class="btn btn-primary" onclick="confirmOrganSelect()">确定</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <!-- ==================== AI自助检测 - 页面内显示（非弹窗） ==================== -->
 <div id="upload-section" class="card">
@@ -238,58 +277,20 @@
                     <div id="res-accuracy" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
                 </div>
                 <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Dice_Kidner</div>
-                    <div id="res-dice-kidner" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Dice_Kidney</div>
+                    <div id="res-dice-kidney" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
                 </div>
                 <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">IoU_Kidner</div>
-                    <div id="res-iou-kidner" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">IoU_Kidney</div>
+                    <div id="res-iou-kidney" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
                 </div>
                 <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">HD95_Kidner</div>
-                    <div id="res-hd95-kidner" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">HD95_Kidney</div>
+                    <div id="res-hd95-kidney" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
                 </div>
             </div>
         </div>
 
-                <!-- 切片浏览器 -->
-        <div id="slice-browser" style="display: none; margin-top: 20px; background: #f8fafc; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                <h4 style="margin: 0; color: #1e293b; font-size: 15px;">
-                    <i class="fas fa-film" style="margin-right: 8px; color: var(--primary);"></i>切片浏览器 - 病灶动态观察
-                </h4>
-                <span id="slice-info" style="font-size: 13px; color: #64748b;"></span>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
-                <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
-                    <div style="background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center;">原始切片</div>
-                    <img id="slice-original-img" src="" alt="原始切片" style="width: 100%; height: 250px; object-fit: contain; background: #000;">
-                </div>
-                <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
-                    <div style="background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center;">分割切片</div>
-                    <img id="slice-predict-img" src="" alt="分割切片" style="width: 100%; height: 250px; object-fit: contain; background: #000;">
-                </div>
-            </div>
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <button onclick="slicePrev()" class="btn btn-outline btn-sm" id="slice-prev-btn">
-                    <i class="fas fa-chevron-left"></i>
-                </button>
-                <input type="range" id="slice-slider" min="0" max="0" value="0" style="flex: 1; accent-color: var(--primary); cursor: pointer;" oninput="onSliceChange(this.value)">
-                <button onclick="sliceNext()" class="btn btn-outline btn-sm" id="slice-next-btn">
-                    <i class="fas fa-chevron-right"></i>
-                </button>
-            </div>
-            <div id="slice-play-controls" style="display: flex; align-items: center; gap: 8px; margin-top: 10px; justify-content: center;">
-                <button onclick="toggleSlicePlay()" class="btn btn-outline btn-sm" id="slice-play-btn">
-                    <i class="fas fa-play" id="slice-play-icon"></i> 自动播放
-                </button>
-                <select id="slice-play-speed" class="form-input" style="width: auto; padding: 4px 8px; font-size: 12px;">
-                    <option value="60">快速</option>
-                    <option value="120" selected>正常</option>
-                    <option value="300">慢速</option>
-                </select>
-            </div>
-        </div>
 
 
         <!-- 处理信息 -->
@@ -383,51 +384,6 @@
                         <img id="detail-gold" src="" alt="金标准" style="width: 100%; height: 200px; object-fit: contain; background: #f8fafc; cursor: zoom-in;" ondblclick="openImagePreview('detail-gold')">
                     </div>
                 </div>
-                <!-- 切片浏览器 - 病灶动态观察 -->
-                <div id="slice-browser-section" style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <h4 style="margin: 0; color: #1e293b; font-size: 15px;"><i class="fas fa-film" style="margin-right: 8px; color: var(--primary);"></i>切片浏览器 - 病灶动态观察</h4>
-                        <span id="detail-slice-browser-meta" style="font-size: 12px; color: #64748b;"></span>
-                    </div>
-                    <div id="detail-slice-browser-viewer" style="display: none;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-                            <div>
-                                <div style="background: #f1f5f9; padding: 6px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center; border-radius: 6px 6px 0 0;">原始切片</div>
-                                <div style="background: #000; border-radius: 0 0 6px 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 200px;">
-                                    <img id="detail-slice-orig" src="" alt="原始切片" style="max-width: 100%; max-height: 280px; object-fit: contain; cursor: zoom-in;" ondblclick="openImagePreview('detail-slice-orig')">
-                                </div>
-                            </div>
-                            <div>
-                                <div style="background: #f1f5f9; padding: 6px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center; border-radius: 6px 6px 0 0;">分割切片</div>
-                                <div style="background: #000; border-radius: 0 0 6px 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 200px;">
-                                    <img id="detail-slice-seg" src="" alt="分割切片" style="max-width: 100%; max-height: 280px; object-fit: contain; cursor: zoom-in;" ondblclick="openImagePreview('detail-slice-seg')">
-                                </div>
-                            </div>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                            <button onclick="navigateDetailSlice(-1)" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 14px; cursor: pointer; color: #475569; font-size: 14px; transition: all 0.2s;"><i class="fas fa-chevron-left"></i></button>
-                            <div style="flex: 1; display: flex; align-items: center; gap: 10px;">
-                                <input type="range" id="detail-slice-slider" min="0" max="0" value="0" style="flex: 1; cursor: pointer;" oninput="onDetailSliceSliderChange(this.value)">
-                            </div>
-                            <button onclick="navigateDetailSlice(1)" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 14px; cursor: pointer; color: #475569; font-size: 14px; transition: all 0.2s;"><i class="fas fa-chevron-right"></i></button>
-                        </div>
-                        <div style="display: flex; justify-content: center; align-items: center; gap: 12px;">
-                            <button id="detail-slice-play-btn" onclick="toggleDetailSlicePlay()" style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 16px; cursor: pointer; color: #475569; font-size: 13px; display: flex; align-items: center; gap: 6px;">
-                                <i class="fas fa-play" id="detail-slice-play-icon"></i> <span id="detail-slice-play-text">自动播放</span>
-                            </button>
-                            <select id="detail-slice-speed" onchange="changeDetailSliceSpeed(this.value)" style="padding: 8px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13px; color: #475569; background: white; cursor: pointer;">
-                                <option value="60">快速</option>
-                                <option value="120" selected>正常</option>
-                                <option value="300">慢速</option>
-                            </select>
-                        </div>
-                        <div id="detail-slice-info" style="text-align: center; margin-top: 10px; font-size: 12px; color: #64748b;"></div>
-                    </div>
-                    <div id="detail-slice-browser-empty" style="text-align: center; padding: 24px; color: #94a3b8; font-size: 13px;">
-                        <i class="fas fa-th-large" style="font-size: 24px; margin-bottom: 8px; display: block; color: #cbd5e1;"></i>
-                        暂无切片浏览器数据
-                    </div>
-                </div>
                 <!-- 分割质量指标 -->
                 <div id="segment-metrics-section" style="background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
                     <h4 style="margin: 0 0 12px 0; color: #1e293b; font-size: 15px;"><i class="fas fa-tachometer-alt" style="margin-right: 8px;"></i>分割质量指标</h4>
@@ -478,6 +434,73 @@ let selectedFile = null;
 // 当前检测结果的缓存（用于保存记录）
 let currentResultData = null;
 let currentMode = 'segment'; // 'segment' 或 'classify'
+let currentOrgan = null; // 当前选择的器官
+let pendingAction = null; // 待执行的操作：'segment' 或 'classify'
+
+// ========== 器官选择弹窗 ==========
+function openOrganSelectModal(action) {
+    if (!selectedFile) {
+        alert('请先选择图片文件');
+        return;
+    }
+    pendingAction = action;
+    currentOrgan = null;
+    // 清除所有选中状态
+    const organs = ['kidney', 'spleen', 'pancreas', 'lung', 'liver'];
+    organs.forEach(function(organ) {
+        const el = document.getElementById('organ-' + organ);
+        if (el) {
+            el.dataset.selected = 'false';
+            el.style.borderColor = '#e2e8f0';
+            el.style.background = 'white';
+        }
+    });
+    document.getElementById('organSelectModal').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeOrganSelectModal() {
+    document.getElementById('organSelectModal').style.display = 'none';
+    document.body.style.overflow = '';
+    pendingAction = null;
+}
+
+function highlightOrgan(organ) {
+    currentOrgan = organ;
+    // 清除所有选中状态
+    const organs = ['kidney', 'spleen', 'pancreas', 'lung', 'liver'];
+    organs.forEach(function(o) {
+        const el = document.getElementById('organ-' + o);
+        if (el) {
+            el.dataset.selected = 'false';
+            el.style.borderColor = '#e2e8f0';
+            el.style.background = 'white';
+        }
+    });
+    // 设置当前选中状态
+    const selectedEl = document.getElementById('organ-' + organ);
+    if (selectedEl) {
+        selectedEl.dataset.selected = 'true';
+        selectedEl.style.borderColor = '#6366f1';
+        selectedEl.style.background = '#f5f3ff';
+    }
+}
+
+function confirmOrganSelect() {
+    if (!currentOrgan) {
+        alert('请先选择一个器官');
+        return;
+    }
+    var action = pendingAction;
+    closeOrganSelectModal();
+
+    // 根据待执行的操作调用相应的函数
+    if (action === 'segment') {
+        doSegmentation();
+    } else if (action === 'classify') {
+        doClassification();
+    }
+}
 
 // 页面加载完成后添加事件监听器
 document.addEventListener('DOMContentLoaded', function() {
@@ -555,7 +578,13 @@ function formatMetric(value) {
 }
 
 // 开始分割 - 调用后端分割模型
-async function startSegmentation() {
+// 开始分割 - 先弹出器官选择
+function startSegmentation() {
+    openOrganSelectModal('segment');
+}
+
+// 执行分割 - 调用后端分割模型
+async function doSegmentation() {
     if (!selectedFile) {
         alert('请先选择图片文件');
         return;
@@ -568,6 +597,7 @@ async function startSegmentation() {
 
     const formData = new FormData();
     formData.append('file', selectedFile);
+    formData.append('organ', currentOrgan || 'kidney');
 
     try {
         const response = await fetch('/api/segment', {
@@ -649,9 +679,9 @@ async function startSegmentation() {
             // 显示分割系数（来自CSV）
             if (data.metrics) {
                 document.getElementById('res-accuracy').textContent = formatMetric(data.metrics.accuracy);
-                document.getElementById('res-dice-kidner').textContent = formatMetric(data.metrics.dice_kidner);
-                document.getElementById('res-iou-kidner').textContent = formatMetric(data.metrics.iou_kidner);
-                document.getElementById('res-hd95-kidner').textContent = formatMetric(data.metrics.hd95_kidner);
+                document.getElementById('res-dice-kidney').textContent = formatMetric(data.metrics.dice_kidney);
+                document.getElementById('res-iou-kidney').textContent = formatMetric(data.metrics.iou_kidney);
+                document.getElementById('res-hd95-kidney').textContent = formatMetric(data.metrics.hd95_kidney);
             }
 
             // 显示处理信息
@@ -665,14 +695,6 @@ async function startSegmentation() {
             }
            infoDiv.innerHTML = infoHtml;
             infoDiv.style.display = 'flex';
-
-            // 加载切片浏览器
-            const patientId = parsePatientId(data.original_name || '');
-            if (patientId && data.dataset) {
-                loadPatientSlices(patientId, data.dataset);
-            } else {
-                document.getElementById('slice-browser').style.display = 'none';
-            }
 
         } else {
             alert('分割失败: ' + (data.error || '未知错误'));
@@ -689,7 +711,13 @@ async function startSegmentation() {
 const CLASSIFY_API_BASE = 'http://127.0.0.1:5005';
 
 // 开始分类 - 调用后端分类模型
-async function startClassification() {
+// 开始分类 - 先弹出器官选择
+function startClassification() {
+    openOrganSelectModal('classify');
+}
+
+// 执行分类 - 调用后端分类模型
+async function doClassification() {
     if (!selectedFile) {
         alert('请先选择图片文件');
         return;
@@ -704,6 +732,7 @@ async function startClassification() {
 
     const formData = new FormData();
     formData.append('file', selectedFile);
+    formData.append('organ', currentOrgan || 'kidney');
 
     try {
         const response = await fetch(CLASSIFY_API_BASE + '/api/classify', {
@@ -758,9 +787,6 @@ async function startClassification() {
             infoDiv.innerHTML = infoHtml;
             infoDiv.style.display = 'flex';
 
-            // 隐藏切片浏览器
-            document.getElementById('slice-browser').style.display = 'none';
-
         } else {
             alert('分类失败: ' + (data.error || '未知错误'));
             document.getElementById('page-preview-area').style.display = 'block';
@@ -785,11 +811,6 @@ function resetUpload() {
     document.getElementById('page-loading-area').style.display = 'none';
     document.getElementById('page-preview-area').style.display = 'none';
     document.getElementById('page-upload-area').style.display = 'block';
-    // 清理切片浏览器
-    document.getElementById('slice-browser').style.display = 'none';
-    if (slicePlayTimer) { clearInterval(slicePlayTimer); slicePlayTimer = null; }
-    sliceIsPlaying = false;
-    sliceData = null;
 }
 
 // ========== 保存记录功能 ==========
@@ -838,7 +859,6 @@ function saveRecord() {
             original_name: currentResultData.image_name || selectedFile.name || '',
             predict_name: '',
             gold_name: '',
-            slice_browser_api_data: null,
             ai_analysis: ''  // 预留AI分析内容字段
         };
     } else {
@@ -855,15 +875,6 @@ function saveRecord() {
             original_name: currentResultData.original_name || '',
             predict_name: currentResultData.predict_name || '',
             gold_name: currentResultData.gold_name || '',
-            // 切片浏览器API数据
-            slice_browser_api_data: sliceData ? {
-                patient_id: sliceData.patient_id,
-                dataset: sliceData.dataset,
-                total: sliceData.total,
-                slices: (sliceData.slices || []).map(function(s) {
-                    return { slice_num: s.slice_num, filename: s.filename || '' };
-                })
-            } : null,
             ai_analysis: ''  // 预留AI分析内容字段
         };
     }
@@ -1058,8 +1069,8 @@ function showRecordDetail(id) {
         // 设置指标
         const metricsDiv = document.getElementById('detail-metrics');
         const metrics = record.metrics || {};
-        const metricLabels = ['accuracy', 'dice_kidner', 'iou_kidner', 'hd95_kidner'];
-        const metricNames = ['Accuracy', 'Dice_Kidner', 'IoU_Kidner', 'HD95_Kidner'];
+        const metricLabels = ['accuracy', 'dice_kidney', 'iou_kidney', 'hd95_kidney'];
+        const metricNames = ['Accuracy', 'Dice_Kidney', 'IoU_Kidney', 'HD95_Kidney'];
         let metricsHtml = '';
         for (let i = 0; i < metricLabels.length; i++) {
             const val = metrics[metricLabels[i]];
@@ -1069,9 +1080,6 @@ function showRecordDetail(id) {
             metricsHtml += '</div>';
         }
         metricsDiv.innerHTML = metricsHtml;
-
-        // 设置切片浏览器
-        renderDetailSliceBrowser(record);
     }
 
     // 重置AI分析区域
@@ -1102,7 +1110,6 @@ function showRecordDetail(id) {
 function closeRecordDetailModal() {
     document.getElementById('recordDetailModal').style.display = 'none';
     document.body.style.overflow = '';
-    stopDetailSlicePlay();
 }
 
 // ========== AI智能分析功能 ==========
@@ -1391,8 +1398,8 @@ function exportRecordPDF() {
         metricsHtml = '<div class="metric-item"><span class="metric-name">分类类别</span><span class="metric-value" style="color: #16a34a;">' + escapeHtml(record.class_name || '-') + '</span></div>';
     } else {
         const metrics = record.metrics || {};
-        const metricLabels = ['accuracy', 'dice_kidner', 'iou_kidner', 'hd95_kidner'];
-        const metricNames = ['Accuracy', 'Dice_Kidner', 'IoU_Kidner', 'HD95_Kidner'];
+        const metricLabels = ['accuracy', 'dice_kidney', 'iou_kidney', 'hd95_kidney'];
+        const metricNames = ['Accuracy', 'Dice_Kidney', 'IoU_Kidney', 'HD95_Kidney'];
         for (let i = 0; i < metricLabels.length; i++) {
             const val = metrics[metricLabels[i]];
             if (val !== undefined && val !== null) {
@@ -1660,117 +1667,6 @@ function exportRecordPDF() {
                 };
             }
         }
-    }
-}
-
-// ========== 记录详情弹窗中的切片浏览器 ==========
-let detailSliceApiData = null;
-let detailSliceIndex = 0;
-let detailSlicePlayTimer = null;
-let detailSliceIsPlaying = false;
-
-function renderDetailSliceBrowser(record) {
-    detailSliceApiData = record.slice_browser_api_data || null;
-    detailSliceIndex = 0;
-
-    const viewer = document.getElementById('detail-slice-browser-viewer');
-    const empty = document.getElementById('detail-slice-browser-empty');
-    const slider = document.getElementById('detail-slice-slider');
-    const meta = document.getElementById('detail-slice-browser-meta');
-
-    const count = detailSliceApiData ? (detailSliceApiData.slices || []).length : 0;
-
-    if (count === 0) {
-        viewer.style.display = 'none';
-        empty.style.display = 'block';
-        meta.textContent = '';
-        return;
-    }
-
-    viewer.style.display = 'block';
-    empty.style.display = 'none';
-
-    slider.max = count - 1;
-    slider.value = 0;
-
-    meta.textContent = '患者 ' + detailSliceApiData.patient_id + ' | 共 ' + detailSliceApiData.total + ' 张切片 | 数据集: ' + detailSliceApiData.dataset.toUpperCase();
-
-    updateDetailSliceDisplay();
-}
-
-function updateDetailSliceDisplay() {
-    if (!detailSliceApiData || !detailSliceApiData.slices || detailSliceApiData.slices.length === 0) return;
-
-    const slice = detailSliceApiData.slices[detailSliceIndex];
-    const patientId = detailSliceApiData.patient_id;
-    const dataset = detailSliceApiData.dataset;
-    const count = detailSliceApiData.slices.length;
-
-    document.getElementById('detail-slice-orig').src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=original';
-    document.getElementById('detail-slice-seg').src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=prediction';
-    document.getElementById('detail-slice-slider').value = detailSliceIndex;
-    document.getElementById('detail-slice-info').textContent = '切片 ' + (detailSliceIndex + 1) + '/' + count + ' (' + (slice.filename || '') + ')';
-    document.getElementById('detail-slice-browser-meta').textContent = '患者 ' + patientId + ' | 切片 ' + (detailSliceIndex + 1) + '/' + detailSliceApiData.total + ' (' + (slice.filename || '') + ') | 数据集: ' + dataset.toUpperCase();
-}
-
-function navigateDetailSlice(direction) {
-    if (!detailSliceApiData || !detailSliceApiData.slices) return;
-    const count = detailSliceApiData.slices.length;
-    if (count === 0) return;
-
-    detailSliceIndex += direction;
-    if (detailSliceIndex < 0) detailSliceIndex = 0;
-    if (detailSliceIndex >= count) detailSliceIndex = count - 1;
-
-    updateDetailSliceDisplay();
-}
-
-function onDetailSliceSliderChange(value) {
-    detailSliceIndex = parseInt(value);
-    updateDetailSliceDisplay();
-}
-
-function toggleDetailSlicePlay() {
-    if (detailSliceIsPlaying) {
-        stopDetailSlicePlay();
-    } else {
-        startDetailSlicePlay();
-    }
-}
-
-function startDetailSlicePlay() {
-    if (!detailSliceApiData || !detailSliceApiData.slices) return;
-    const count = detailSliceApiData.slices.length;
-    if (count === 0) return;
-
-    detailSliceIsPlaying = true;
-    document.getElementById('detail-slice-play-icon').className = 'fas fa-pause';
-    document.getElementById('detail-slice-play-text').textContent = '暂停';
-
-    const speed = parseInt(document.getElementById('detail-slice-speed').value) || 1000;
-
-    detailSlicePlayTimer = setInterval(function() {
-        detailSliceIndex++;
-        if (detailSliceIndex >= count) detailSliceIndex = 0;
-        updateDetailSliceDisplay();
-    }, speed);
-}
-
-function stopDetailSlicePlay() {
-    detailSliceIsPlaying = false;
-    document.getElementById('detail-slice-play-icon').className = 'fas fa-play';
-    document.getElementById('detail-slice-play-text').textContent = '自动播放';
-
-    if (detailSlicePlayTimer) {
-        clearInterval(detailSlicePlayTimer);
-        detailSlicePlayTimer = null;
-    }
-}
-
-function changeDetailSliceSpeed(value) {
-    if (detailSliceIsPlaying) {
-        stopDetailSlicePlay();
-        startDetailSlicePlay();
     }
 }
 
@@ -2083,108 +1979,6 @@ window.onclick = function(event) {
     const recordModal = document.getElementById('recordDetailModal');
     if (event.target === recordModal) {
         closeRecordDetailModal();
-    }
-}
-
-// ========== 切片浏览器 ==========
-let sliceData = null;
-let slicePlayTimer = null;
-let sliceIsPlaying = false;
-
-function parsePatientId(filename) {
-    // 从 case_XXXXX_YYY.jpg 格式提取患者ID
-    const match = filename.match(/case_(\d+)_\d+/);
-    return match ? match[1] : null;
-}
-
-async function loadPatientSlices(patientId, dataset) {
-    try {
-        const resp = await fetch('/api/patient-slices?patient_id=' + patientId + '&dataset=' + dataset);
-        const data = await resp.json();
-        if (data.success && data.slices && data.slices.length > 0) {
-            sliceData = data;
-            initSliceBrowser();
-        }
-    } catch (e) {
-        console.error('加载切片数据失败:', e);
-    }
-}
-
-function initSliceBrowser() {
-    const browser = document.getElementById('slice-browser');
-    const slider = document.getElementById('slice-slider');
-    const info = document.getElementById('slice-info');
-
-    browser.style.display = 'block';
-    slider.max = sliceData.slices.length - 1;
-    slider.value = 0;
-    info.textContent = '患者 ' + sliceData.patient_id + ' | 共 ' + sliceData.total + ' 张切片 | 数据集: ' + sliceData.dataset.toUpperCase();
-
-    // 找到当前切片的位置
-    if (currentResultData && currentResultData.original_name) {
-        const currentSliceNum = currentResultData.original_name.match(/case_\d+_(\d+)/);
-        if (currentSliceNum) {
-            for (let i = 0; i < sliceData.slices.length; i++) {
-                if (sliceData.slices[i].slice_num === currentSliceNum[1]) {
-                    slider.value = i;
-                    break;
-                }
-            }
-        }
-    }
-
-    onSliceChange(slider.value);
-}
-
-function onSliceChange(index) {
-    if (!sliceData || !sliceData.slices[index]) return;
-    const slice = sliceData.slices[index];
-    const patientId = sliceData.patient_id;
-    const dataset = sliceData.dataset;
-
-    document.getElementById('slice-original-img').src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=original';
-    document.getElementById('slice-predict-img').src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=prediction';
-
-    document.getElementById('slice-info').textContent = '患者 ' + patientId + ' | 切片 ' + (parseInt(index) + 1) + '/' + sliceData.total + ' (' + slice.filename + ') | 数据集: ' + dataset.toUpperCase();
-}
-
-function slicePrev() {
-    const slider = document.getElementById('slice-slider');
-    if (slider.value > 0) {
-        slider.value = parseInt(slider.value) - 1;
-        onSliceChange(slider.value);
-    }
-}
-
-function sliceNext() {
-    const slider = document.getElementById('slice-slider');
-    if (slider.value < parseInt(slider.max)) {
-        slider.value = parseInt(slider.value) + 1;
-        onSliceChange(slider.value);
-    }
-}
-
-function toggleSlicePlay() {
-    const btn = document.getElementById('slice-play-btn');
-    const icon = document.getElementById('slice-play-icon');
-    if (sliceIsPlaying) {
-        clearInterval(slicePlayTimer);
-        sliceIsPlaying = false;
-        icon.className = 'fas fa-play';
-        btn.innerHTML = '<i class="fas fa-play" id="slice-play-icon"></i> 自动播放';
-    } else {
-        const speed = parseInt(document.getElementById('slice-play-speed').value);
-        sliceIsPlaying = true;
-        btn.innerHTML = '<i class="fas fa-pause" id="slice-play-icon"></i> 暂停播放';
-        slicePlayTimer = setInterval(function() {
-            const slider = document.getElementById('slice-slider');
-            if (parseInt(slider.value) >= parseInt(slider.max)) {
-                slider.value = 0;
-            } else {
-                slider.value = parseInt(slider.value) + 1;
-            }
-            onSliceChange(slider.value);
-        }, speed);
     }
 }
 
