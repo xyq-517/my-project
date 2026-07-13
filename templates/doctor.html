@@ -174,15 +174,7 @@
                 <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
                     <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">HD95</div>
                     <div id="res-hd95" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
-                </div>
-                <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Precision</div>
-                    <div id="res-precision" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
-                </div>
-                <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Recall</div>
-                    <div id="res-recall" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
-                </div>
+                </div>     
             </div>
         </div>
         </div><!-- end segment-area -->
@@ -699,8 +691,6 @@ async function startSegmentation() {
                 document.getElementById('res-dice').textContent = formatMetric(data.metrics.dice);
                 document.getElementById('res-iou').textContent = formatMetric(data.metrics.iou);
                 document.getElementById('res-hd95').textContent = formatMetric(data.metrics.hd95);
-                document.getElementById('res-precision').textContent = formatMetric(data.metrics.precision);
-                document.getElementById('res-recall').textContent = formatMetric(data.metrics.recall);
             }
 
             // 显示处理信息
@@ -1223,8 +1213,8 @@ function showRecordDetail(id) {
     // 设置指标
     const metricsDiv = document.getElementById('detail-metrics');
     const metrics = record.metrics || {};
-    const metricLabels = ['accuracy', 'dice', 'iou', 'hd95', 'precision', 'recall'];
-    const metricNames = ['Accuracy', 'Dice', 'IoU', 'HD95', 'Precision', 'Recall'];
+    const metricLabels = ['accuracy', 'dice', 'iou', 'hd95'];
+    const metricNames = ['Accuracy', 'Dice', 'IoU', 'HD95''];
     let metricsHtml = '';
     for (let i = 0; i < metricLabels.length; i++) {
         const val = metrics[metricLabels[i]];
@@ -2287,8 +2277,8 @@ function renderCaseCompareImages(records) {
 // 渲染指标对比表格
 function renderCaseCompareMetricsTable(records) {
     const container = document.getElementById('caseCompareMetricsTable');
-    const metricLabels = ['accuracy', 'dice', 'iou', 'hd95', 'precision', 'recall'];
-    const metricNames = ['Accuracy', 'Dice', 'IoU', 'HD95', 'Precision', 'Recall'];
+    const metricLabels = ['accuracy', 'dice', 'iou', 'hd95'];
+    const metricNames = ['Accuracy', 'Dice', 'IoU', 'HD95'];
 
     let html = '<table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08);">';
     html += '<thead>';
