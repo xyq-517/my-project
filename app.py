@@ -22,40 +22,17 @@ dashscope.api_key = os.getenv('DASHSCOPE_API_KEY', '')
 SEGMENT_API_URL = os.getenv('SEGMENT_API_URL', 'http://127.0.0.1:5003/api/segment')
 CLASSIFY_API_URL = os.getenv('CLASSIFY_API_URL', 'http://127.0.0.1:5005/api/classify')
 
-
-# 数据集配置
-# Railway部署时：COS_BASE_URL指向腾讯云COS存储桶根地址，图片直接从COS加载
-# 本地开发时：使用默认的本地路径（COS_BASE_URL为空）
-COS_BASE_URL = os.getenv('COS_BASE_URL', '').rstrip('/')
-
+# 数据集配置 - 映射数据集名称到原始图像和预测图像目录
 DATASET_CONFIG = {
     'kits19': {
-        'originals_path': 'VOCdevkit_kits19/VOC2007/JPEGImages',
-        'predictions_path': 'img_out',
+        'originals': r'D:\shengwu\using\unet-pytorch\VOCdevkit_kits19\VOC2007\JPEGImages',
+        'predictions': r'D:\shengwu\using\unet-pytorch\img_out',
     },
     'lidc': {
-        'originals_path': 'VOCdevkit_lidc_test/VOC2007/JPEGImages',
-        'predictions_path': 'img_out',
+        'originals': r'D:\shengwu\using\unet-pytorch\VOCdevkit_lidc_test\VOC2007\JPEGImages',
+        'predictions': r'D:\shengwu\using\unet-pytorch\img_out',
     },
 }
-
-def get_dataset_dir(dataset, file_type):
-    """获取数据集目录路径（本地路径或COS URL前缀）"""
-    path_key = f'{file_type}_path'
-    sub_path = DATASET_CONFIG[dataset][path_key]
-    if COS_BASE_URL:
-        return f'{COS_BASE_URL}/{sub_path}'
-    local_paths = {
-        ('kits19', 'originals'): r'D:\shengwu\using\unet-pytorch\VOCdevkit_kits19\VOC2007\JPEGImages',
-        ('kits19', 'predictions'): r'D:\shengwu\using\unet-pytorch\img_out',
-        ('lidc', 'originals'): r'D:\shengwu\using\unet-pytorch\VOCdevkit_lidc_test\VOC2007\JPEGImages',
-        ('lidc', 'predictions'): r'D:\shengwu\using\unet-pytorch\img_out',
-    }
-    return local_paths.get((dataset, file_type), sub_path)
-
-def is_cos_mode():
-    """是否为COS模式（部署在Railway时为True）"""
-    return bool(COS_BASE_URL)
 
 # ========== 切片浏览器API ==========
 
@@ -72,35 +49,21 @@ def get_patient_slices():
         if dataset not in DATASET_CONFIG:
             return jsonify({'success': False, 'error': f'未知数据集: {dataset}'}), 400
 
-        # COS模式：通过COS API列出文件；本地模式：扫描本地目录
-        cos_mode = is_cos_mode()
-        pred_dir = get_dataset_dir(dataset, 'predictions')
+        pred_dir = DATASET_CONFIG[dataset]['predictions']
+        if not os.path.isdir(pred_dir):
+            return jsonify({'success': False, 'error': f'预测目录不存在: {pred_dir}'}), 404
 
+        pattern = f'case_{patient_id}_'
         slices = []
-        if cos_mode:
-            # COS模式：直接返回切片编号范围，不逐个探测（避免超时）
-            # 实际不存在的切片加载时会显示空白，不影响使用
-            max_slice = 200
-            for i in range(max_slice):
+        for filename in os.listdir(pred_dir):
+            if filename.startswith(pattern) and filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+                parts = filename.replace(pattern, '').split('.')
+                slice_num = parts[0]
                 slices.append({
-                    'index': i,
-                    'filename': f'case_{patient_id}_{i}.jpg',
-                    'slice_num': str(i),
+                    'index': len(slices),
+                    'filename': filename,
+                    'slice_num': slice_num,
                 })
-        else:
-            if not os.path.isdir(pred_dir):
-                return jsonify({'success': False, 'error': f'预测目录不存在: {pred_dir}'}), 404
-
-            pattern = f'case_{patient_id}_'
-            for filename in os.listdir(pred_dir):
-                if filename.startswith(pattern) and filename.lower().endswith(('.jpg', '.jpeg', '.png')):
-                    parts = filename.replace(pattern, '').split('.')
-                    slice_num = parts[0]
-                    slices.append({
-                        'index': len(slices),
-                        'filename': filename,
-                        'slice_num': slice_num,
-                    })
 
         slices.sort(key=lambda x: int(x['slice_num']) if x['slice_num'].isdigit() else 0)
 
@@ -110,8 +73,6 @@ def get_patient_slices():
             'dataset': dataset,
             'total': len(slices),
             'slices': slices,
-            'cos_mode': cos_mode,
-            'cos_base_url': COS_BASE_URL if cos_mode else '',
         })
 
     except Exception as e:
@@ -135,17 +96,12 @@ def get_slice_image():
         if dataset not in DATASET_CONFIG:
             return jsonify({'error': f'未知数据集: {dataset}'}), 400
 
-        file_type = 'originals' if img_type == 'original' else 'predictions'
-        img_dir = get_dataset_dir(dataset, file_type)
+        if img_type == 'original':
+            img_dir = DATASET_CONFIG[dataset]['originals']
+        else:
+            img_dir = DATASET_CONFIG[dataset]['predictions']
 
         filename = f'case_{patient_id}_{slice_num}.jpg'
-
-        # COS模式：直接302重定向到COS图片URL，不做任何HEAD检查（避免超时）
-        if is_cos_mode():
-            cos_url = f'{img_dir}/{filename}'
-            return redirect(cos_url, code=302)
-
-        # 本地模式：直接读取文件返回
         filepath = os.path.join(img_dir, filename)
 
         if not os.path.isfile(filepath):
@@ -766,13 +722,13 @@ def build_trend_analysis_prompt(records, description):
             if metrics:
                 prompt += "分割质量指标：\n"
                 if metrics.get('accuracy') is not None:
-                    prompt += f"  - Accuracy（准确率）: {safe_format_metric(metrics['accuracy'])}\n"
-                if metrics.get('dice_kidney') is not None:
-                    prompt += f"  - Dice_Kidney（肾脏Dice系数）: {safe_format_metric(metrics['dice_kidney'])}\n"
-                if metrics.get('iou_kidney') is not None:
-                    prompt += f"  - IoU_Kidney（肾脏交并比）: {safe_format_metric(metrics['iou_kidney'])}\n"
-                if metrics.get('hd95_kidney') is not None:
-                    prompt += f"  - HD95_Kidney（肾脏95%豪斯多夫距离）: {safe_format_metric(metrics['hd95_kidney'])}\n"
+                    prompt += f"  - accuracy（准确率）: {safe_format_metric(metrics['accuracy'])}\n"
+                if metrics.get('iou_kinder') is not None:
+                    prompt += f"  - IoU_kinder（交并比）: {safe_format_metric(metrics['iou_kinder'])}\n"
+                if metrics.get('dice_kinder') is not None:
+                    prompt += f"  - Dice_kinder（Dice系数）: {safe_format_metric(metrics['dice_kinder'])}\n"
+                if metrics.get('hd95_kinder') is not None:
+                    prompt += f"  - HD95_kinder（95%豪斯多夫距离）: {safe_format_metric(metrics['hd95_kinder'])}\n"
         prompt += "\n"
 
     if description:
@@ -784,7 +740,7 @@ def build_trend_analysis_prompt(records, description):
 1. **数据概览**：总结检测记录的基本情况（数据集类型、检测次数、时间跨度等）
 
 2. **指标解读**：
-   - 解释各项分割指标的含义（Accuracy、Dice、IoU、HD95、Precision、Recall）
+   - 解释各项分割指标的含义（accuracy、IoU_kinder、Dice_kinder、HD95_kinder）
    - 分析各指标数值反映的检测质量
 
 3. **趋势分析**：
@@ -905,18 +861,18 @@ def build_case_comparison_prompt(patient_name, records, description):
         if metrics:
             prompt += "分割质量指标：\n"
             if metrics.get('accuracy') is not None:
-                prompt += f"  - Accuracy（准确率）: {safe_format_metric(metrics['accuracy'])}\n"
-            if metrics.get('dice_kidney') is not None:
-                prompt += f"  - Dice_Kidney（肾脏Dice系数）: {safe_format_metric(metrics['dice_kidney'])}\n"
-            if metrics.get('iou_kidney') is not None:
-                prompt += f"  - IoU_Kidney（肾脏交并比）: {safe_format_metric(metrics['iou_kidney'])}\n"
-            if metrics.get('hd95_kidney') is not None:
-                prompt += f"  - HD95_Kidney（肾脏95%豪斯多夫距离）: {safe_format_metric(metrics['hd95_kidney'])}\n"
+                prompt += f"  - accuracy（准确率）: {safe_format_metric(metrics['accuracy'])}\n"
+            if metrics.get('dice_kinder') is not None:
+                prompt += f"  - Dice_kinder（Dice系数）: {safe_format_metric(metrics['dice_kinder'])}\n"
+            if metrics.get('iou_kinder') is not None:
+                prompt += f"  - IoU_kinder（交并比）: {safe_format_metric(metrics['iou_kinder'])}\n"
+            if metrics.get('hd95_kinder') is not None:
+                prompt += f"  - HD95_kinder（95%豪斯多夫距离）: {safe_format_metric(metrics['hd95_kinder'])}\n"
 
     if len(records) >= 2:
         prompt += "\n【指标变化统计】\n"
-        metric_labels = ['accuracy', 'dice_kidney', 'iou_kidney', 'hd95_kidney']
-        metric_names = ['Accuracy', 'Dice_Kidney', 'IoU_Kidney', 'HD95_Kidney']
+        metric_labels = ['accuracy', 'dice_kinder', 'iou_kinder', 'hd95_kinder']
+        metric_names = ['accuracy', 'Dice_kinder', 'IoU_kinder', 'HD95_kinder']
         for label, name in zip(metric_labels, metric_names):
             first_val = records[0].get('metrics', {}).get(label)
             last_val = records[-1].get('metrics', {}).get(label)
@@ -940,9 +896,9 @@ def build_case_comparison_prompt(patient_name, records, description):
 1. **患者概况**：简要总结患者基本信息和检测背景
 
 2. **分割质量对比**：
-   - 逐项对比各次检测的分割指标（Accuracy、Dice、IoU、HD95、Precision、Recall）
-   - 分析指标变化的意义（如Dice系数提高可能意味着分割精度改善）
-   - 注意HD95指标的特殊性（值越低越好，表示分割边界与金标准越接近）
+   - 逐项对比各次检测的分割指标（accuracy、Dice_kinder、IoU_kinder、HD95_kinder）
+   - 分析指标变化的意义（如Dice_kinder提高可能意味着分割精度改善）
+   - 注意HD95_kinder指标的特殊性（值越低越好，表示分割边界与金标准越接近）
 
 3. **病情变化趋势分析**：
    - 基于分割结果的变化，分析病灶/病变区域的变化趋势
@@ -1063,13 +1019,13 @@ def build_record_analysis_prompt(record):
         metrics = record.get('metrics', {})
         if metrics:
             if metrics.get('accuracy') is not None:
-                prompt += f"  - Accuracy（准确率）: {safe_format_metric(metrics['accuracy'])}\n"
-            if metrics.get('dice_kidney') is not None:
-                prompt += f"  - Dice_Kidney（肾脏Dice系数）: {safe_format_metric(metrics['dice_kidney'])}\n"
-            if metrics.get('iou_kidney') is not None:
-                prompt += f"  - IoU_Kidney（肾脏交并比）: {safe_format_metric(metrics['iou_kidney'])}\n"
-            if metrics.get('hd95_kidney') is not None:
-                prompt += f"  - HD95_Kidney（肾脏95%豪斯多夫距离）: {safe_format_metric(metrics['hd95_kidney'])}\n"
+                prompt += f"  - accuracy（准确率）: {safe_format_metric(metrics['accuracy'])}\n"
+            if metrics.get('dice_kinder') is not None:
+                prompt += f"  - Dice_kinder（Dice系数）: {safe_format_metric(metrics['dice_kinder'])}\n"
+            if metrics.get('iou_kinder') is not None:
+                prompt += f"  - IoU_kinder（交并比）: {safe_format_metric(metrics['iou_kinder'])}\n"
+            if metrics.get('hd95_kinder') is not None:
+                prompt += f"  - HD95_kinder（95%豪斯多夫距离）: {safe_format_metric(metrics['hd95_kinder'])}\n"
         else:
             prompt += "  无分割指标数据\n"
         prompt += "\n"
