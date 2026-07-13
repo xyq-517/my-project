@@ -238,16 +238,16 @@
                     <div id="res-accuracy" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
                 </div>
                 <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Dice_Kidney</div>
-                    <div id="res-dice-kidney" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Dice_Kidner</div>
+                    <div id="res-dice-kidner" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
                 </div>
                 <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">IoU_Kidney</div>
-                    <div id="res-iou-kidney" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">IoU_Kidner</div>
+                    <div id="res-iou-kidner" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
                 </div>
                 <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">HD95_Kidney</div>
-                    <div id="res-hd95-kidney" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">HD95_Kidner</div>
+                    <div id="res-hd95-kidner" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
                 </div>
             </div>
         </div>
@@ -649,9 +649,9 @@ async function startSegmentation() {
             // 显示分割系数（来自CSV）
             if (data.metrics) {
                 document.getElementById('res-accuracy').textContent = formatMetric(data.metrics.accuracy);
-                document.getElementById('res-dice-kidney').textContent = formatMetric(data.metrics.dice_kidney);
-                document.getElementById('res-iou-kidney').textContent = formatMetric(data.metrics.iou_kidney);
-                document.getElementById('res-hd95-kidney').textContent = formatMetric(data.metrics.hd95_kidney);
+                document.getElementById('res-dice-kidner').textContent = formatMetric(data.metrics.dice_kidner);
+                document.getElementById('res-iou-kidner').textContent = formatMetric(data.metrics.iou_kidner);
+                document.getElementById('res-hd95-kidner').textContent = formatMetric(data.metrics.hd95_kidner);
             }
 
             // 显示处理信息
@@ -1058,8 +1058,8 @@ function showRecordDetail(id) {
         // 设置指标
         const metricsDiv = document.getElementById('detail-metrics');
         const metrics = record.metrics || {};
-        const metricLabels = ['accuracy', 'dice_kidney', 'iou_kidney', 'hd95_kidney'];
-        const metricNames = ['Accuracy', 'Dice_Kidney', 'IoU_Kidney', 'HD95_Kidney'];
+        const metricLabels = ['accuracy', 'dice_kidner', 'iou_kidner', 'hd95_kidner'];
+        const metricNames = ['Accuracy', 'Dice_Kidner', 'IoU_Kidner', 'HD95_Kidner'];
         let metricsHtml = '';
         for (let i = 0; i < metricLabels.length; i++) {
             const val = metrics[metricLabels[i]];
@@ -1391,8 +1391,8 @@ function exportRecordPDF() {
         metricsHtml = '<div class="metric-item"><span class="metric-name">分类类别</span><span class="metric-value" style="color: #16a34a;">' + escapeHtml(record.class_name || '-') + '</span></div>';
     } else {
         const metrics = record.metrics || {};
-        const metricLabels = ['accuracy', 'dice_kidney', 'iou_kidney', 'hd95_kidney'];
-        const metricNames = ['Accuracy', 'Dice_Kidney', 'IoU_Kidney', 'HD95_Kidney'];
+        const metricLabels = ['accuracy', 'dice_kidner', 'iou_kidner', 'hd95_kidner'];
+        const metricNames = ['Accuracy', 'Dice_Kidner', 'IoU_Kidner', 'HD95_Kidner'];
         for (let i = 0; i < metricLabels.length; i++) {
             const val = metrics[metricLabels[i]];
             if (val !== undefined && val !== null) {
