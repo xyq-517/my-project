@@ -687,6 +687,7 @@ async function startSegmentation() {
 
             // 显示分割系数（来自CSV）
             if (data.metrics) {
+                console.log('后端返回的metrics:', data.metrics); 
                 document.getElementById('res-accuracy').textContent = formatMetric(data.metrics.accuracy);
                 document.getElementById('res-dice').textContent = formatMetric(data.metrics.dice_kinder);
                 document.getElementById('res-iou').textContent = formatMetric(data.metrics.iou_kinder);
