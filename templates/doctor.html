@@ -519,6 +519,13 @@
 </div>
 
 <script>
+// ========== COS存储桶配置 ==========
+const COS_BASE_URL = 'https://cla-data1-1451618751.cos.ap-shanghai.myqcloud.com/VOCdevkit_kits19';
+// 切片数据子目录配置（根据实际COS目录结构调整）
+const COS_SLICES_ORIGINAL_DIR = 'JPEGImages';    // 原始CT切片目录
+const COS_SLICES_PREDICT_DIR = 'SegmentationClass'; // 分割预测结果目录
+const COS_SLICES_GOLD_DIR = 'SegmentationObject';   // 金标准目录
+
 // ========== 页面内上传功能 ==========
 let selectedFile = null;
 let currentResultData = null;
@@ -721,6 +728,14 @@ async function startSegmentation() {
             const patientId = parsePatientId(data.original_name || '');
             if (patientId && data.dataset) {
                 loadPatientSlices(patientId, data.dataset);
+            } else if (data.original_name) {
+                // 尝试从original_name中提取patientId的其他格式
+                const altMatch = data.original_name.match(/case_0*(\d+)/);
+                if (altMatch && data.dataset) {
+                    loadPatientSlices(altMatch[1], data.dataset);
+                } else {
+                    document.getElementById('slice-browser').style.display = 'none';
+                }
             } else {
                 document.getElementById('slice-browser').style.display = 'none';
             }
@@ -928,6 +943,7 @@ function saveDoctorRecord(patientInfo) {
             patient_id: sliceData.patient_id,
             dataset: sliceData.dataset,
             total: sliceData.total,
+            source: sliceData.source || 'api',  // 保存数据来源标记
             slices: (sliceData.slices || []).map(function(s) {
                 return { slice_num: s.slice_num, filename: s.filename || '' };
             })
@@ -1376,8 +1392,16 @@ function updateSliceBrowserDisplay() {
         const dataset = sliceBrowserApiData.dataset;
         const count = sliceBrowserApiData.slices.length;
 
-        origImg.src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=original';
-        segImg.src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=prediction';
+        // 如果数据来源是COS，直接使用COS URL
+        if (sliceBrowserApiData.source === 'cos') {
+            const paddedId = patientId.padStart(5, '0');
+            const filename = slice.filename || ('case_' + paddedId + '_' + slice.slice_num + '.png');
+            origImg.src = COS_BASE_URL + '/' + COS_SLICES_ORIGINAL_DIR + '/' + filename;
+            segImg.src = COS_BASE_URL + '/' + COS_SLICES_PREDICT_DIR + '/' + filename;
+        } else {
+            origImg.src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=original';
+            segImg.src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=prediction';
+        }
         slider.value = sliceBrowserIndex;
         info.textContent = '切片 ' + (sliceBrowserIndex + 1) + '/' + count + ' (' + (slice.filename || '') + ')';
         if (meta) meta.textContent = '患者 ' + patientId + ' | 切片 ' + (sliceBrowserIndex + 1) + '/' + sliceBrowserApiData.total + ' (' + (slice.filename || '') + ') | 数据集: ' + dataset.toUpperCase();
@@ -1732,8 +1756,16 @@ function updateInlineSliceBrowserDisplay(recordId) {
         const dataset = data.apiData.dataset;
         const count = data.apiData.slices.length;
 
-        if (origImg) origImg.src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=original';
-        if (segImg) segImg.src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=prediction';
+        // 如果数据来源是COS，直接使用COS URL
+        if (data.apiData.source === 'cos') {
+            const paddedId = patientId.padStart(5, '0');
+            const filename = slice.filename || ('case_' + paddedId + '_' + slice.slice_num + '.png');
+            if (origImg) origImg.src = COS_BASE_URL + '/' + COS_SLICES_ORIGINAL_DIR + '/' + filename;
+            if (segImg) segImg.src = COS_BASE_URL + '/' + COS_SLICES_PREDICT_DIR + '/' + filename;
+        } else {
+            if (origImg) origImg.src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=original';
+            if (segImg) segImg.src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=prediction';
+        }
         if (slider) slider.value = data.index;
         if (info) info.textContent = '切片 ' + (data.index + 1) + '/' + count + ' (' + (slice.filename || '') + ')';
         if (meta) meta.textContent = '患者 ' + patientId + ' | 切片 ' + (data.index + 1) + '/' + data.apiData.total + ' (' + (slice.filename || '') + ') | 数据集: ' + dataset.toUpperCase();
@@ -1912,11 +1944,76 @@ function parsePatientId(filename) {
 
 async function loadPatientSlices(patientId, dataset) {
     try {
-        const resp = await fetch('/api/patient-slices?patient_id=' + patientId + '&dataset=' + dataset);
-        const data = await resp.json();
-        if (data.success && data.slices && data.slices.length > 0) {
-            sliceData = data;
+        // 先尝试通过后端API加载
+        try {
+            const resp = await fetch('/api/patient-slices?patient_id=' + patientId + '&dataset=' + dataset);
+            const data = await resp.json();
+            if (data.success && data.slices && data.slices.length > 0) {
+                sliceData = data;
+                initSliceBrowser();
+                return;
+            }
+        } catch (e) {
+            console.log('[COS] 后端API不可用，尝试COS存储桶直接加载');
+        }
+
+        // 后端不可用时，从COS存储桶直接加载切片
+        // KiTS19文件名格式：case_XXXXX_YY.png，其中XXXXX是patientId，YY是切片编号
+        const paddedId = patientId.padStart(5, '0');
+        const slices = [];
+        
+        // 尝试探测切片数量（从0到200范围内探测存在的切片）
+        for (let i = 0; i <= 300; i++) {
+            const sliceNum = String(i).padStart(2, '0');
+            const filename = 'case_' + paddedId + '_' + sliceNum + '.png';
+            const url = COS_BASE_URL + '/' + COS_SLICES_ORIGINAL_DIR + '/' + filename;
+            // 使用fetch HEAD请求快速探测文件是否存在
+            try {
+                const headResp = await fetch(url, { method: 'HEAD' });
+                if (headResp.ok) {
+                    slices.push({
+                        slice_num: sliceNum,
+                        filename: filename
+                    });
+                } else {
+                    // 如果连续3个切片不存在，认为已经到末尾
+                    if (slices.length > 0 && i > slices[slices.length-1].slice_num * 1 + 3) {
+                        break;
+                    }
+                }
+            } catch (err) {
+                // CORS限制可能导致HEAD请求失败，改为直接尝试加载
+                const img = new Image();
+                const exists = await new Promise(function(resolve) {
+                    img.onload = function() { resolve(true); };
+                    img.onerror = function() { resolve(false); };
+                    img.src = url;
+                    setTimeout(function() { resolve(false); }, 3000);
+                });
+                if (exists) {
+                    slices.push({
+                        slice_num: sliceNum,
+                        filename: filename
+                    });
+                } else if (slices.length > 0 && i > parseInt(slices[slices.length-1].slice_num) + 5) {
+                    break;
+                }
+            }
+        }
+
+        if (slices.length > 0) {
+            sliceData = {
+                success: true,
+                patient_id: paddedId,
+                dataset: dataset,
+                total: slices.length,
+                slices: slices,
+                source: 'cos'  // 标记数据来源为COS
+            };
             initSliceBrowser();
+            console.log('[COS] 成功从COS加载 ' + slices.length + ' 张切片');
+        } else {
+            console.log('[COS] 未找到患者 ' + paddedId + ' 的切片数据');
         }
     } catch (e) {
         console.error('加载切片数据失败:', e);
@@ -1955,10 +2052,18 @@ function onSliceChange(index) {
     const patientId = sliceData.patient_id;
     const dataset = sliceData.dataset;
 
-    document.getElementById('slice-original-img').src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=original';
-    document.getElementById('slice-predict-img').src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=prediction';
+    // 如果数据来源是COS，直接使用COS URL
+    if (sliceData.source === 'cos') {
+        const paddedId = patientId.padStart(5, '0');
+        const filename = slice.filename || ('case_' + paddedId + '_' + slice.slice_num + '.png');
+        document.getElementById('slice-original-img').src = COS_BASE_URL + '/' + COS_SLICES_ORIGINAL_DIR + '/' + filename;
+        document.getElementById('slice-predict-img').src = COS_BASE_URL + '/' + COS_SLICES_PREDICT_DIR + '/' + filename;
+    } else {
+        document.getElementById('slice-original-img').src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=original';
+        document.getElementById('slice-predict-img').src = '/api/slice-image?patient_id=' + patientId + '&slice_num=' + slice.slice_num + '&dataset=' + dataset + '&type=prediction';
+    }
 
-    document.getElementById('slice-info').textContent = '患者 ' + patientId + ' | 切片 ' + (parseInt(index) + 1) + '/' + sliceData.total + ' (' + slice.filename + ') | 数据集: ' + dataset.toUpperCase();
+    document.getElementById('slice-info').textContent = '患者 ' + patientId + ' | 切片 ' + (parseInt(index) + 1) + '/' + sliceData.total + ' (' + (slice.filename || '') + ') | 数据集: ' + dataset.toUpperCase();
 }
 
 function slicePrev() {
