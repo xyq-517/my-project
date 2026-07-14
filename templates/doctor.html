@@ -689,9 +689,9 @@ async function startSegmentation() {
             if (data.metrics) {
                 console.log('后端返回的metrics:', data.metrics); 
                 document.getElementById('res-accuracy').textContent = formatMetric(data.metrics.accuracy);
-                document.getElementById('res-dice').textContent = formatMetric(data.metrics.dice_kinder);
-                document.getElementById('res-iou').textContent = formatMetric(data.metrics.iou_kinder);
-                document.getElementById('res-hd95').textContent = formatMetric(data.metrics.hd95_kinder);
+                document.getElementById('res-dice').textContent = formatMetric(data.metrics.dice;
+                document.getElementById('res-iou').textContent = formatMetric(data.metrics.iou);
+                document.getElementById('res-hd95').textContent = formatMetric(data.metrics.hd95);
             }
 
             // 显示处理信息
