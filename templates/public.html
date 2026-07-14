@@ -678,10 +678,11 @@ async function doSegmentation() {
 
             // 显示分割系数（来自CSV）
             if (data.metrics) {
+                console.log('后端返回的metrics:', data.metrics);
                 document.getElementById('res-accuracy').textContent = formatMetric(data.metrics.accuracy);
-                document.getElementById('res-dice').textContent = formatMetric(data.metrics.Dice_kinder);
-                document.getElementById('res-iou').textContent = formatMetric(data.metrics.IoU_kinder);
-                document.getElementById('res-hd95').textContent = formatMetric(data.metrics.HD95_kinder);
+                document.getElementById('res-dice').textContent = formatMetric(data.metrics.Dice_kinder !== undefined ? data.metrics.Dice_kinder : data.metrics.dice_kinder !== undefined ? data.metrics.dice_kinder : data.metrics.mDice);
+                document.getElementById('res-iou').textContent = formatMetric(data.metrics.IoU_kinder !== undefined ? data.metrics.IoU_kinder : data.metrics.iou_kinder !== undefined ? data.metrics.iou_kinder : data.metrics.mIoU);
+                document.getElementById('res-hd95').textContent = formatMetric(data.metrics.HD95_kinder !== undefined ? data.metrics.HD95_kinder : data.metrics.hd95_kinder !== undefined ? data.metrics.hd95_kinder : data.metrics.mHD95);
             }
 
             // 显示处理信息
