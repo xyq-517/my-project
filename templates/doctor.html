@@ -1214,7 +1214,7 @@ function showRecordDetail(id) {
     const metricsDiv = document.getElementById('detail-metrics');
     const metrics = record.metrics || {};
     const metricLabels = ['accuracy', 'dice', 'iou', 'hd95'];
-    const metricNames = ['Accuracy', 'Dice', 'IoU', 'HD95''];
+    const metricNames = ['Accuracy', 'Dice', 'IoU', 'HD95'];
     let metricsHtml = '';
     for (let i = 0; i < metricLabels.length; i++) {
         const val = metrics[metricLabels[i]];
