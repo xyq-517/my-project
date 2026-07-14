@@ -679,9 +679,9 @@ async function doSegmentation() {
             // 显示分割系数（来自CSV）
             if (data.metrics) {
                 document.getElementById('res-accuracy').textContent = formatMetric(data.metrics.accuracy);
-                document.getElementById('res-dice').textContent = formatMetric(data.metrics.Dice_kinder);
-                document.getElementById('res-iou').textContent = formatMetric(data.metrics.IoU_kinder);
-                document.getElementById('res-hd95').textContent = formatMetric(data.metrics.HD95_kinder);
+                document.getElementById('res-dice').textContent = formatMetric(data.metrics.dice);
+                document.getElementById('res-iou').textContent = formatMetric(data.metrics.iou);
+                document.getElementById('res-hd95').textContent = formatMetric(data.metrics.hd95);
             }
 
             // 显示处理信息
@@ -1069,7 +1069,7 @@ function showRecordDetail(id) {
         // 设置指标
         const metricsDiv = document.getElementById('detail-metrics');
         const metrics = record.metrics || {};
-        const metricLabels = ['accuracy', 'Dice_kinder', 'IoU_kinder', 'HD95_kinder'];
+        const metricLabels = ['accuracy', 'dice', 'iou', 'hd95'];
         const metricNames = ['Accuracy', 'Dice', 'IoU', 'HD95'];
         let metricsHtml = '';
         for (let i = 0; i < metricLabels.length; i++) {
@@ -1398,7 +1398,7 @@ function exportRecordPDF() {
         metricsHtml = '<div class="metric-item"><span class="metric-name">分类类别</span><span class="metric-value" style="color: #16a34a;">' + escapeHtml(record.class_name || '-') + '</span></div>';
     } else {
         const metrics = record.metrics || {};
-        const metricLabels = ['accuracy', 'Dice_kinder', 'IoU_kinder', 'HD95_kinder'];
+        const metricLabels = ['accuracy', 'dice', 'iou', 'hd95'];
         const metricNames = ['Accuracy', 'Dice', 'IoU', 'HD95'];
         for (let i = 0; i < metricLabels.length; i++) {
             const val = metrics[metricLabels[i]];
