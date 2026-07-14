@@ -688,9 +688,9 @@ async function startSegmentation() {
             // 显示分割系数（来自CSV）
             if (data.metrics) {
                 document.getElementById('res-accuracy').textContent = formatMetric(data.metrics.accuracy);
-                document.getElementById('res-dice').textContent = formatMetric(data.metrics.Dice_kinder);
-                document.getElementById('res-iou').textContent = formatMetric(data.metrics.IoU_kinder);
-                document.getElementById('res-hd95').textContent = formatMetric(data.metrics.HD95_kinder);
+                document.getElementById('res-dice').textContent = formatMetric(data.metrics.dice_kinder);
+                document.getElementById('res-iou').textContent = formatMetric(data.metrics.iou_kinder);
+                document.getElementById('res-hd95').textContent = formatMetric(data.metrics.hd95_kinder);
             }
 
             // 显示处理信息
