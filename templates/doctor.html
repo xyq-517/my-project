@@ -599,6 +599,18 @@ function formatMetric(value) {
     return value;
 }
 
+// 获取嵌套对象值，支持点号路径如 'per_class.Dice_kinder'
+function getNestedValue(obj, path) {
+    if (!obj || !path) return undefined;
+    const parts = path.split('.');
+    let current = obj;
+    for (let i = 0; i < parts.length; i++) {
+        if (current === null || current === undefined) return undefined;
+        current = current[parts[i]];
+    }
+    return current;
+}
+
 // 开始分割 - 调用后端分割模型
 async function startSegmentation() {
     if (!selectedFile) {
@@ -688,9 +700,9 @@ async function startSegmentation() {
             // 显示分割系数（来自CSV）
             if (data.metrics) {
                 document.getElementById('res-accuracy').textContent = formatMetric(data.metrics.accuracy);
-                document.getElementById('res-dice').textContent = formatMetric(data.metrics.dice);
-                document.getElementById('res-iou').textContent = formatMetric(data.metrics.iou);
-                document.getElementById('res-hd95').textContent = formatMetric(data.metrics.hd95);
+                document.getElementById('res-dice').textContent = formatMetric(data.metrics.per_class && data.metrics.per_class.Dice_kinder !== undefined ? data.metrics.per_class.Dice_kinder : data.metrics.dice);
+                document.getElementById('res-iou').textContent = formatMetric(data.metrics.per_class && data.metrics.per_class.IoU_kinder !== undefined ? data.metrics.per_class.IoU_kinder : data.metrics.iou);
+                document.getElementById('res-hd95').textContent = formatMetric(data.metrics.per_class && data.metrics.per_class.HD95_kinder !== undefined ? data.metrics.per_class.HD95_kinder : data.metrics.hd95);
             }
 
             // 显示处理信息
@@ -1213,11 +1225,11 @@ function showRecordDetail(id) {
     // 设置指标
     const metricsDiv = document.getElementById('detail-metrics');
     const metrics = record.metrics || {};
-    const metricLabels = ['accuracy', 'dice', 'iou', 'hd95'];
+    const metricLabels = ['accuracy', 'per_class.Dice_kinder', 'per_class.IoU_kinder', 'per_class.HD95_kinder'];
     const metricNames = ['Accuracy', 'Dice', 'IoU', 'HD95'];
     let metricsHtml = '';
     for (let i = 0; i < metricLabels.length; i++) {
-        const val = metrics[metricLabels[i]];
+        const val = getNestedValue(metrics, metricLabels[i]);
         metricsHtml += '<div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">';
         metricsHtml += '  <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">' + metricNames[i] + '</div>';
         metricsHtml += '  <div style="font-size: 18px; font-weight: 700; color: #1e293b;">' + formatMetric(val) + '</div>';
@@ -2277,7 +2289,7 @@ function renderCaseCompareImages(records) {
 // 渲染指标对比表格
 function renderCaseCompareMetricsTable(records) {
     const container = document.getElementById('caseCompareMetricsTable');
-    const metricLabels = ['accuracy', 'dice', 'iou', 'hd95'];
+    const metricLabels = ['accuracy', 'per_class.Dice_kinder', 'per_class.IoU_kinder', 'per_class.HD95_kinder'];
     const metricNames = ['Accuracy', 'Dice', 'IoU', 'HD95'];
 
     let html = '<table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08);">';
@@ -2300,7 +2312,7 @@ function renderCaseCompareMetricsTable(records) {
 
         const values = [];
         records.forEach(function(record) {
-            const val = record.metrics && record.metrics[label] !== undefined ? record.metrics[label] : null;
+            const val = record.metrics ? getNestedValue(record.metrics, label) : null;
             values.push(val);
             html += '<td style="padding: 10px 14px; text-align: center; font-size: 14px; font-weight: 600; color: #1e293b; border-bottom: 1px solid #f1f5f9;">' + formatMetric(val) + '</td>';
         });
@@ -2315,13 +2327,13 @@ function renderCaseCompareMetricsTable(records) {
                 const pct = firstVal !== 0 ? ((diff / Math.abs(firstVal)) * 100).toFixed(1) : '0.0';
                 if (diff > 0) {
                     // 对于HD95，升高是不好的；其他指标升高是好的
-                    if (label === 'hd95') {
+                    if (label === 'per_class.HD95_kinder') {
                         trendHtml = '<span style="color: #ef4444; font-size: 12px;"><i class="fas fa-arrow-up"></i> +' + pct + '%</span>';
                     } else {
                         trendHtml = '<span style="color: #22c55e; font-size: 12px;"><i class="fas fa-arrow-up"></i> +' + pct + '%</span>';
                     }
                 } else if (diff < 0) {
-                    if (label === 'hd95') {
+                    if (label === 'per_class.HD95_kinder') {
                         trendHtml = '<span style="color: #22c55e; font-size: 12px;"><i class="fas fa-arrow-down"></i> ' + pct + '%</span>';
                     } else {
                         trendHtml = '<span style="color: #ef4444; font-size: 12px;"><i class="fas fa-arrow-down"></i> ' + pct + '%</span>';
