@@ -577,6 +577,18 @@ function formatMetric(value) {
     return value;
 }
 
+// 获取嵌套对象值，支持点号路径如 'per_class.Dice_kinder'
+function getNestedValue(obj, path) {
+    if (!obj || !path) return undefined;
+    const parts = path.split('.');
+    let current = obj;
+    for (let i = 0; i < parts.length; i++) {
+        if (current === null || current === undefined) return undefined;
+        current = current[parts[i]];
+    }
+    return current;
+}
+
 // 开始分割 - 调用后端分割模型
 // 开始分割 - 先弹出器官选择
 function startSegmentation() {
@@ -678,11 +690,10 @@ async function doSegmentation() {
 
             // 显示分割系数（来自CSV）
             if (data.metrics) {
-                console.log('后端返回的metrics:', data.metrics);
                 document.getElementById('res-accuracy').textContent = formatMetric(data.metrics.accuracy);
-                document.getElementById('res-dice').textContent = formatMetric(data.metrics.Dice_kinder !== undefined ? data.metrics.Dice_kinder : data.metrics.dice_kinder !== undefined ? data.metrics.dice_kinder : data.metrics.mDice);
-                document.getElementById('res-iou').textContent = formatMetric(data.metrics.IoU_kinder !== undefined ? data.metrics.IoU_kinder : data.metrics.iou_kinder !== undefined ? data.metrics.iou_kinder : data.metrics.mIoU);
-                document.getElementById('res-hd95').textContent = formatMetric(data.metrics.HD95_kinder !== undefined ? data.metrics.HD95_kinder : data.metrics.hd95_kinder !== undefined ? data.metrics.hd95_kinder : data.metrics.mHD95);
+                document.getElementById('res-dice').textContent = formatMetric(data.metrics.per_class && data.metrics.per_class.Dice_kinder !== undefined ? data.metrics.per_class.Dice_kinder : data.metrics.dice);
+                document.getElementById('res-iou').textContent = formatMetric(data.metrics.per_class && data.metrics.per_class.IoU_kinder !== undefined ? data.metrics.per_class.IoU_kinder : data.metrics.iou);
+                document.getElementById('res-hd95').textContent = formatMetric(data.metrics.per_class && data.metrics.per_class.HD95_kinder !== undefined ? data.metrics.per_class.HD95_kinder : data.metrics.hd95);
             }
 
             // 显示处理信息
@@ -1070,11 +1081,11 @@ function showRecordDetail(id) {
         // 设置指标
         const metricsDiv = document.getElementById('detail-metrics');
         const metrics = record.metrics || {};
-        const metricLabels = ['accuracy', 'Dice_kinder', 'IoU_kinder', 'HD95_kinder'];
+        const metricLabels = ['accuracy', 'per_class.Dice_kinder', 'per_class.IoU_kinder', 'per_class.HD95_kinder'];
         const metricNames = ['Accuracy', 'Dice', 'IoU', 'HD95'];
         let metricsHtml = '';
         for (let i = 0; i < metricLabels.length; i++) {
-            const val = metrics[metricLabels[i]];
+            const val = getNestedValue(metrics, metricLabels[i]);
             metricsHtml += '<div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">';
             metricsHtml += '  <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">' + metricNames[i] + '</div>';
             metricsHtml += '  <div style="font-size: 18px; font-weight: 700; color: #1e293b;">' + formatMetric(val) + '</div>';
@@ -1399,10 +1410,10 @@ function exportRecordPDF() {
         metricsHtml = '<div class="metric-item"><span class="metric-name">分类类别</span><span class="metric-value" style="color: #16a34a;">' + escapeHtml(record.class_name || '-') + '</span></div>';
     } else {
         const metrics = record.metrics || {};
-        const metricLabels = ['accuracy', 'Dice_kinder', 'IoU_kinder', 'HD95_kinder'];
+        const metricLabels = ['accuracy', 'per_class.Dice_kinder', 'per_class.IoU_kinder', 'per_class.HD95_kinder'];
         const metricNames = ['Accuracy', 'Dice', 'IoU', 'HD95'];
         for (let i = 0; i < metricLabels.length; i++) {
-            const val = metrics[metricLabels[i]];
+            const val = getNestedValue(metrics, metricLabels[i]);
             if (val !== undefined && val !== null) {
                 metricsHtml += '<div class="metric-item"><span class="metric-name">' + metricNames[i] + '</span><span class="metric-value">' + formatMetric(val) + '</span></div>';
             }
