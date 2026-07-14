@@ -85,11 +85,8 @@
         </div>
         <div style="margin-top: 20px; text-align: right;">
             <button class="btn btn-secondary" onclick="resetUpload()" style="margin-right: 8px;">重新选择</button>
-            <button class="btn btn-primary" onclick="startSegmentation()" id="segmentBtn" style="margin-right: 8px;">
-                <i class="fas fa-cut"></i> 分割
-            </button>
-            <button class="btn btn-info" onclick="startClassification()" id="classifyBtn" style="background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); color: white; border: none;">
-                <i class="fas fa-tags"></i> 分类
+            <button class="btn btn-primary" onclick="startDetection()" id="segmentBtn">
+                <i class="fas fa-magic"></i> 开始检测
             </button>
         </div>
     </div>
@@ -97,8 +94,8 @@
     <!-- 步骤3：加载中 -->
     <div id="page-loading-area" style="display: none; padding: 40px; text-align: center;">
         <div class="loading-spinner"></div>
-        <p id="loading-text" style="margin-top: 16px; color: var(--text-primary);">正在调用模型进行分析，请稍候...</p>
-        <p style="font-size: 13px; color: var(--text-muted);">模型正在分析医学影像特征</p>
+        <p id="loading-text" style="margin-top: 16px; color: var(--text-primary);">正在调用AI模型进行分析，请稍候...</p>
+        <p style="font-size: 13px; color: var(--text-muted);">正在同时分析分类和分割特征</p>
     </div>
 
     <!-- 步骤4：分割结果（三张图对比 + 系数） -->
@@ -109,33 +106,48 @@
             <div id="image-names-content" style="font-size: 13px; color: #334155; line-height: 1.8;"></div>
         </div>
 
-        <!-- 分类结果展示 -->
-        <div id="classification-result" style="display: none; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
-                <div style="display: none;">
-                    <div id="cls-image-name" style="display: none;">-</div>
+        <!-- 分类结果显示区域（仅分类数据集时显示） -->
+        <div id="classification-result-area" style="display: none; margin-bottom: 20px;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 20px; color: white;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                    <div style="width: 48px; height: 48px; background: rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <i class="fas fa-brain" style="font-size: 24px;"></i>
+                    </div>
+                    <div>
+                        <div style="font-size: 18px; font-weight: 700;">AI分类诊断结果</div>
+                        <div style="font-size: 13px; opacity: 0.9;">基于深度学习模型的影像分类分析</div>
+                    </div>
                 </div>
-                <div style="background: white; border-radius: 10px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 6px;"><i class="fas fa-tag" style="margin-right: 4px;"></i>分类类别</div>
-                    <div id="cls-class-name" style="font-size: 22px; font-weight: 700; color: #16a34a;">-</div>
+                <div style="background: rgba(255,255,255,0.15); border-radius: 10px; padding: 16px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                        <div>
+                            <div style="font-size: 12px; opacity: 0.8; margin-bottom: 4px;">预测类别</div>
+                            <div id="classify-class-name" style="font-size: 24px; font-weight: 700;">-</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; opacity: 0.8; margin-bottom: 4px;">置信度</div>
+                            <div id="classify-confidence" style="font-size: 24px; font-weight: 700;">-</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.2);">
+                        <div style="font-size: 12px; opacity: 0.8; margin-bottom: 4px;">处理时间</div>
+                        <div id="classify-processing-time" style="font-size: 14px;">-</div>
+                    </div>
                 </div>
-                <div style="display: none;">
-                    <div id="cls-confidence" style="display: none;">-</div>
+            </div>
+            <!-- 分类结果图片对比 -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px;">
+                <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
+                    <div style="background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center;">原始图像</div>
+                    <img id="classify-original" src="" alt="原始图像" style="width: 100%; height: 200px; object-fit: contain; background: #f8fafc; cursor: zoom-in;" ondblclick="openImagePreview('classify-original')">
+                </div>
+                <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
+                    <div style="background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center;">检测框标注</div>
+                    <img id="classify-result" src="" alt="分类结果" style="width: 100%; height: 200px; object-fit: contain; background: #f8fafc; cursor: zoom-in;" ondblclick="openImagePreview('classify-result')">
                 </div>
             </div>
         </div>
 
-        <!-- 分类结果图片（仅显示原图） -->
-        <div id="classification-images" style="display: none; margin-bottom: 16px;">
-            <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
-                <div style="background: #f1f5f9; padding: 8px 12px; font-size: 13px; font-weight: 600; color: #475569; text-align: center;">原始图像</div>
-                <img id="cls-original-img" src="" alt="原始图像" style="width: 100%; height: 250px; object-fit: contain; background: #f8fafc; cursor: zoom-in;" ondblclick="openImagePreview('cls-original-img')">
-            </div>
-            <img id="cls-result-img" src="" alt="分类结果" style="display: none;">
-        </div>
-
-        <!-- 分割相关区域（分割模式时显示） -->
-        <div id="segment-area">
         <!-- 三张图对比 -->
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
             <div style="border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white;">
@@ -174,10 +186,17 @@
                 <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
                     <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">HD95</div>
                     <div id="res-hd95" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
-                </div>     
+                </div>
+                <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Precision</div>
+                    <div id="res-precision" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
+                </div>
+                <div style="background: white; border-radius: 8px; padding: 12px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                    <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">Recall</div>
+                    <div id="res-recall" style="font-size: 18px; font-weight: 700; color: #1e293b;">-</div>
+                </div>
             </div>
         </div>
-        </div><!-- end segment-area -->
 
         <!-- 切片浏览器 - 病灶动态观察 -->
         <div id="slice-browser" style="display: none; margin-top: 20px; background: #f8fafc; border-radius: 12px; padding: 20px; border: 1px solid #e2e8f0;">
@@ -522,7 +541,6 @@
 // ========== 页面内上传功能 ==========
 let selectedFile = null;
 let currentResultData = null;
-let currentMode = 'segment'; // 'segment' 或 'classify'
 
 // 页面加载完成后添加事件监听器
 document.addEventListener('DOMContentLoaded', function() {
@@ -555,6 +573,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // 加载已保存的记录列表
+    updateRecordsVisibility();
+    autoSavePendingRecord();
     renderRecordsList();
 });
 
@@ -599,13 +619,12 @@ function formatMetric(value) {
     return value;
 }
 
-// 开始分割 - 调用后端分割模型
-async function startSegmentation() {
+// 开始检测 - 同时调用分类和分割两个后端
+async function startDetection() {
     if (!selectedFile) {
         alert('请先选择图片文件');
         return;
     }
-    currentMode = 'segment';
 
     // 显示加载
     document.getElementById('page-preview-area').style.display = 'none';
@@ -615,7 +634,7 @@ async function startSegmentation() {
     formData.append('file', selectedFile);
 
     try {
-        const response = await fetch('/api/segment', {
+        const response = await fetch('/api/detect', {
             method: 'POST',
             body: formData
         });
@@ -631,12 +650,24 @@ async function startSegmentation() {
             // 显示结果区域
             document.getElementById('page-result-area').style.display = 'block';
 
-            // 显示分割相关，隐藏分类相关
-            document.getElementById('classification-result').style.display = 'none';
-            document.getElementById('classification-images').style.display = 'none';
-            document.getElementById('segment-area').style.display = 'block';
-            document.getElementById('image-names-info').style.display = 'block';
-            document.getElementById('saveRecordBtn').style.display = 'inline-block';
+            // 根据检测类型显示不同结果
+            if (data.detect_type === 'classify') {
+                // 显示分类结果
+                showClassificationResult(data);
+                // 隐藏分割相关区域
+                hideSegmentationResult();
+            } else if (data.detect_type === 'segment') {
+                // 显示分割结果（原有逻辑）
+                showSegmentationResult(data);
+                // 隐藏分类区域
+                document.getElementById('classification-result-area').style.display = 'none';
+            } else {
+                // 未知类型
+                alert('该图片不属于任何已知数据集，请上传医学影像图片');
+                document.getElementById('page-result-area').style.display = 'none';
+                document.getElementById('page-preview-area').style.display = 'block';
+                return;
+            }
 
             // 显示图片名称信息
             const namesContent = document.getElementById('image-names-content');
@@ -691,6 +722,8 @@ async function startSegmentation() {
                 document.getElementById('res-dice').textContent = formatMetric(data.metrics.dice);
                 document.getElementById('res-iou').textContent = formatMetric(data.metrics.iou);
                 document.getElementById('res-hd95').textContent = formatMetric(data.metrics.hd95);
+                document.getElementById('res-precision').textContent = formatMetric(data.metrics.precision);
+                document.getElementById('res-recall').textContent = formatMetric(data.metrics.recall);
             }
 
             // 显示处理信息
@@ -724,94 +757,53 @@ async function startSegmentation() {
     }
 }
 
-// 开始分类 - 调用后端分类模型
-async function startClassification() {
-    if (!selectedFile) {
-        alert('请先选择图片文件');
-        return;
-    }
-    currentMode = 'classify';
+// 显示分类结果
+function showClassificationResult(data) {
+    const classifyArea = document.getElementById('classification-result-area');
+    classifyArea.style.display = 'block';
 
-    document.getElementById('loading-text').textContent = '正在调用分类模型，请稍候...';
-    document.getElementById('page-preview-area').style.display = 'none';
-    document.getElementById('page-loading-area').style.display = 'block';
+    // 填充分类信息
+    document.getElementById('classify-class-name').textContent = data.class_name || '未知';
+    document.getElementById('classify-confidence').textContent = (data.confidence * 100).toFixed(2) + '%';
+    document.getElementById('classify-processing-time').textContent = '处理时间: ' + (data.processing_time || '-') + '秒';
 
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-
-    try {
-        console.log('[DEBUG] 开始发送分类请求，文件名:', selectedFile.name);
-        const response = await fetch('/api/classify', {
-            method: 'POST',
-            body: formData
-        });
-
-        console.log('[DEBUG] 分类请求响应状态:', response.status);
-        if (!response.ok) {
-            throw new Error('HTTP error! status: ' + response.status);
+    // 显示图片
+    if (data.images) {
+        if (data.images.original) {
+            document.getElementById('classify-original').src = 'data:image/jpeg;base64,' + data.images.original;
         }
-
-        const data = await response.json();
-        console.log('[DEBUG] 分类响应数据:', data);
-
-        document.getElementById('page-loading-area').style.display = 'none';
-
-        if (data.success) {
-            currentResultData = data;
-            document.getElementById('page-result-area').style.display = 'block';
-
-            // 隐藏分割相关，显示分类相关
-            document.getElementById('classification-result').style.display = 'block';
-            document.getElementById('classification-images').style.display = 'block';
-            document.getElementById('segment-area').style.display = 'none';
-            document.getElementById('image-names-info').style.display = 'none';
-            document.getElementById('slice-browser').style.display = 'none';
-            document.getElementById('saveRecordBtn').style.display = 'none';
-
-            // 填充分类结果
-            document.getElementById('cls-image-name').textContent = data.image_name || selectedFile.name;
-            document.getElementById('cls-class-name').textContent = data.class_name || '未知';
-            document.getElementById('cls-confidence').textContent = data.confidence ? (data.confidence * 100).toFixed(2) + '%' : '-';
-
-            // 显示原图
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('cls-original-img').src = e.target.result;
-            };
-            reader.readAsDataURL(selectedFile);
-
-            // 显示分类结果图
-            if (data.result_image) {
-                document.getElementById('cls-result-img').src = 'data:image/png;base64,' + data.result_image;
-            } else {
-                document.getElementById('cls-result-img').src = 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect fill="%23f0fdf4" width="400" height="300"/><text fill="%23166534" x="50%" y="50%" text-anchor="middle" dy=".3em" font-size="18">分类结果: ' + (data.class_name || '未知') + '</text></svg>';
-            }
-
-            // 处理信息
-            const infoDiv = document.getElementById('result-info');
-            let infoHtml = '';
-            if (data.processing_time) {
-                infoHtml += '<span style="padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: #f3f4f6; color: #4b5563;">处理时间: ' + data.processing_time + 's</span>';
-            }
-            infoHtml += '<span style="padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: #d1fae5; color: #065f46;">分类完成</span>';
-            infoDiv.innerHTML = infoHtml;
-            infoDiv.style.display = 'flex';
-        } else {
-            alert('分类失败: ' + (data.error || '未知错误'));
-            document.getElementById('page-preview-area').style.display = 'block';
+        if (data.images.result) {
+            document.getElementById('classify-result').src = 'data:image/jpeg;base64,' + data.images.result;
         }
-    } catch (error) {
-        document.getElementById('page-loading-area').style.display = 'none';
-        alert('请求失败: ' + error.message);
-        document.getElementById('page-preview-area').style.display = 'block';
     }
+}
+
+// 隐藏分割结果区域
+function hideSegmentationResult() {
+    document.getElementById('image-names-info').style.display = 'none';
+    // 隐藏三张图对比
+    const grid = document.querySelector('#page-result-area > div[style*="grid-template-columns"]');
+    if (grid) grid.style.display = 'none';
+    // 隐藏分割系数
+    const metrics = document.querySelector('#page-result-area > div[style*="background: #f8fafc"]');
+    if (metrics) metrics.style.display = 'none';
+    // 隐藏切片浏览器
+    document.getElementById('slice-browser').style.display = 'none';
+}
+
+// 显示分割结果（原有逻辑）
+function showSegmentationResult(data) {
+    document.getElementById('image-names-info').style.display = 'block';
+    const grid = document.querySelector('#page-result-area > div[style*="grid-template-columns"]');
+    if (grid) grid.style.display = 'grid';
+    const metrics = document.querySelector('#page-result-area > div[style*="background: #f8fafc"]');
+    if (metrics) metrics.style.display = 'block';
 }
 
 // 重置上传
 function resetUpload() {
     selectedFile = null;
     currentResultData = null;
-    currentMode = 'segment';
     document.getElementById('fileInput').value = '';
     document.getElementById('previewImg').src = '';
     document.getElementById('selectedFileName').textContent = '';
@@ -825,6 +817,66 @@ function resetUpload() {
     if (slicePlayTimer) { clearInterval(slicePlayTimer); slicePlayTimer = null; }
     sliceIsPlaying = false;
     sliceData = null;
+}
+
+// ========== 更新记录区域可见性 ==========
+function updateRecordsVisibility() {
+    const recordsSection = document.getElementById('records-section');
+    if (recordsSection) recordsSection.style.display = 'block';
+}
+
+// ========== 自动保存登录前暂存的记录 ==========
+function autoSavePendingRecord() {
+    try {
+        const pending = localStorage.getItem('pending_save_record');
+        if (!pending) return;
+
+        const data = JSON.parse(pending);
+        localStorage.removeItem('pending_save_record');
+
+        if (data.source !== 'doctor') return;
+
+        // 构建记录
+        const record = {
+            id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+            time: new Date().toLocaleString('zh-CN'),
+            dataset: data.dataset || 'unknown',
+            original_base64: data.original_base64 || '',
+            predict_base64: data.predict_base64 || '',
+            gold_base64: data.gold_base64 || '',
+            metrics: data.metrics || {},
+            original_name: data.original_name || '',
+            predict_name: data.predict_name || '',
+            gold_name: data.gold_name || ''
+        };
+
+        // 保存到医生记录
+        let records = [];
+        try {
+            const stored = localStorage.getItem('doctor_segment_records');
+            if (stored) records = JSON.parse(stored);
+        } catch (e) {}
+
+        records.unshift(record);
+
+        try {
+            localStorage.setItem('doctor_segment_records', JSON.stringify(records));
+        } catch (e) {
+            alert('自动保存失败：存储空间不足');
+            return;
+        }
+
+        // 刷新记录列表
+        updateRecordsVisibility();
+        renderRecordsList();
+
+        // 提示用户
+        setTimeout(function() {
+            alert('已自动保存您登录前的检测记录！');
+        }, 500);
+    } catch (e) {
+        localStorage.removeItem('pending_save_record');
+    }
 }
 
 // ========== 患者信息弹窗 ==========
@@ -1213,8 +1265,8 @@ function showRecordDetail(id) {
     // 设置指标
     const metricsDiv = document.getElementById('detail-metrics');
     const metrics = record.metrics || {};
-    const metricLabels = ['accuracy', 'dice', 'iou', 'hd95'];
-    const metricNames = ['Accuracy', 'Dice', 'IoU', 'HD95''];
+    const metricLabels = ['accuracy', 'dice', 'iou', 'hd95', 'precision', 'recall'];
+    const metricNames = ['Accuracy', 'Dice', 'IoU', 'HD95', 'Precision', 'Recall'];
     let metricsHtml = '';
     for (let i = 0; i < metricLabels.length; i++) {
         const val = metrics[metricLabels[i]];
