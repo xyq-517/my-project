@@ -688,9 +688,9 @@ async function startSegmentation() {
             // 显示分割系数（来自CSV）
             if (data.metrics) {
                 document.getElementById('res-accuracy').textContent = formatMetric(data.metrics.accuracy);
-                document.getElementById('res-dice').textContent = formatMetric(data.metrics.dice);
-                document.getElementById('res-iou').textContent = formatMetric(data.metrics.iou);
-                document.getElementById('res-hd95').textContent = formatMetric(data.metrics.hd95);
+                document.getElementById('res-dice').textContent = formatMetric(data.metrics.Dice_kinder);
+                document.getElementById('res-iou').textContent = formatMetric(data.metrics.IoU_kinder);
+                document.getElementById('res-hd95').textContent = formatMetric(data.metrics.HD95_kinder);
             }
 
             // 显示处理信息
@@ -1213,7 +1213,7 @@ function showRecordDetail(id) {
     // 设置指标
     const metricsDiv = document.getElementById('detail-metrics');
     const metrics = record.metrics || {};
-    const metricLabels = ['accuracy', 'dice', 'iou', 'hd95'];
+    const metricLabels = ['accuracy', 'Dice_kinder', 'IoU_kinder', 'HD95_kinder'];
     const metricNames = ['Accuracy', 'Dice', 'IoU', 'HD95'];
     let metricsHtml = '';
     for (let i = 0; i < metricLabels.length; i++) {
@@ -2104,7 +2104,7 @@ function selectComparePatient(patientName) {
     let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
     patientRecords.forEach(function(record, index) {
         const datasetLabel = record.dataset ? record.dataset.toUpperCase() : '未知';
-        const diceValue = record.metrics && record.metrics.dice ? formatMetric(record.metrics.dice) : '-';
+        const diceValue = record.metrics && record.metrics.Dice_kinder ? formatMetric(record.metrics.Dice_kinder) : '-';
 
         html += '<label style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: white; border-radius: 8px; cursor: pointer; transition: all 0.2s; border: 1px solid transparent;" ' +
             'onmouseover="this.style.borderColor=\'#6366f1\';this.style.background=\'#f5f3ff\'" ' +
@@ -2277,7 +2277,7 @@ function renderCaseCompareImages(records) {
 // 渲染指标对比表格
 function renderCaseCompareMetricsTable(records) {
     const container = document.getElementById('caseCompareMetricsTable');
-    const metricLabels = ['accuracy', 'dice', 'iou', 'hd95'];
+    const metricLabels = ['accuracy', 'Dice_kinder', 'IoU_kinder', 'HD95_kinder'];
     const metricNames = ['Accuracy', 'Dice', 'IoU', 'HD95'];
 
     let html = '<table style="width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08);">';
@@ -2315,13 +2315,13 @@ function renderCaseCompareMetricsTable(records) {
                 const pct = firstVal !== 0 ? ((diff / Math.abs(firstVal)) * 100).toFixed(1) : '0.0';
                 if (diff > 0) {
                     // 对于HD95，升高是不好的；其他指标升高是好的
-                    if (label === 'hd95') {
+                    if (label === 'HD95_kinder') {
                         trendHtml = '<span style="color: #ef4444; font-size: 12px;"><i class="fas fa-arrow-up"></i> +' + pct + '%</span>';
                     } else {
                         trendHtml = '<span style="color: #22c55e; font-size: 12px;"><i class="fas fa-arrow-up"></i> +' + pct + '%</span>';
                     }
                 } else if (diff < 0) {
-                    if (label === 'hd95') {
+                    if (label === 'HD95_kinder') {
                         trendHtml = '<span style="color: #22c55e; font-size: 12px;"><i class="fas fa-arrow-down"></i> ' + pct + '%</span>';
                     } else {
                         trendHtml = '<span style="color: #ef4444; font-size: 12px;"><i class="fas fa-arrow-down"></i> ' + pct + '%</span>';
